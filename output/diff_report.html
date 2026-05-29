@@ -127,48 +127,44 @@
   <!-- ── Header ─────────────────────────────────────────── -->
   <div class="header">
     <h1>⚡ Power BI Version Comparison Report</h1>
-    <p>Generated at {{ generated_at }} | Environment: {{ environment }} | Format: {{ format }}</p>
+    <p>Generated at 2026-05-29 10:34:46 | Environment: local | Format: pbix</p>
     <div class="meta">
-      <span>📂 Old: {{ old_path }}</span>
-      <span>📂 New: {{ new_path }}</span>
-      <span>⏱ Duration: {{ duration }}</span>
+      <span>📂 Old: powerBi\oldFile.pbix</span>
+      <span>📂 New: powerBi\newFile.pbix</span>
+      <span>⏱ Duration: 0.06s</span>
     </div>
   </div>
 
   <!-- ── Databricks Warning ──────────────────────────────── -->
-  {% if dbx_warning %}
-  <div class="warning">{{ dbx_warning }}</div>
-  {% endif %}
+  
 
   <!-- ── No Changes ─────────────────────────────────────── -->
-  {% if total_changes == 0 %}
-  <div class="no-changes">✅ No changes detected between the two versions.</div>
-  {% endif %}
+  
 
   <!-- ── Summary Cards ──────────────────────────────────── -->
   <div class="summary-grid">
     <div class="card green">
-      <div class="count">{{ model.tables_added | length }}</div>
+      <div class="count">0</div>
       <div class="label">Tables Added</div>
     </div>
     <div class="card red">
-      <div class="count">{{ model.tables_removed | length }}</div>
+      <div class="count">0</div>
       <div class="label">Tables Removed</div>
     </div>
     <div class="card amber">
-      <div class="count">{{ model.measures_modified | length }}</div>
+      <div class="count">0</div>
       <div class="label">Measures Changed</div>
     </div>
     <div class="card green">
-      <div class="count">{{ report.pages_added | length }}</div>
+      <div class="count">0</div>
       <div class="label">Pages Added</div>
     </div>
     <div class="card red">
-      <div class="count">{{ report.pages_removed | length }}</div>
+      <div class="count">0</div>
       <div class="label">Pages Removed</div>
     </div>
     <div class="card amber">
-      <div class="count">{{ report.visuals_modified | length }}</div>
+      <div class="count">1</div>
       <div class="label">Visuals Modified</div>
     </div>
   </div>
@@ -177,293 +173,220 @@
   <!-- ══════════════════════════════════════════════════════ -->
   <!--  DATA MODEL SECTION                                    -->
   <!-- ══════════════════════════════════════════════════════ -->
-  {% if model %}
+  
   <h2>📊 Data Model Changes</h2>
 
   <!-- Tables -->
   <div class="panel">
     <h3>Tables</h3>
-    {% if model.tables_added %}
-      {% for t in model.tables_added %}
-        <span class="tag added">+ {{ t }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if model.tables_removed %}
-      {% for t in model.tables_removed %}
-        <span class="tag removed">- {{ t }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if not model.tables_added and not model.tables_removed %}
+    
+    
+    
       <p style="color:#aaa; font-size:0.85rem;">No table changes.</p>
-    {% endif %}
+    
   </div>
 
   <!-- Columns -->
   <div class="panel">
     <h3>Columns</h3>
-    {% if model.columns_added or model.columns_removed %}
-    <table>
-      <thead><tr><th>Table</th><th>Column</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for c in model.columns_added %}
-        <tr><td>{{ c.table }}</td><td>{{ c.column }}</td><td><span class="tag added">Added</span></td></tr>
-        {% endfor %}
-        {% for c in model.columns_removed %}
-        <tr><td>{{ c.table }}</td><td>{{ c.column }}</td><td><span class="tag removed">Removed</span></td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
+    
       <p style="color:#aaa; font-size:0.85rem;">No column changes.</p>
-    {% endif %}
+    
   </div>
 
   <!-- Measures (DAX side-by-side) -->
   <div class="panel">
     <h3>Measures</h3>
-    {% if model.measures_modified %}
-      {% for m in model.measures_modified %}
-      <div style="margin-bottom:1.2rem;">
-        <strong>{{ m.measure }}</strong>
-        <span class="tag {{ m.status }}">{{ m.status }}</span>
-        {% if m.status == 'modified' %}
-        <div class="dax-grid">
-          <div class="dax-box old">
-            <div class="dax-label">Old DAX</div>
-            <pre>{{ m.old_dax }}</pre>
-          </div>
-          <div class="dax-box new">
-            <div class="dax-label">New DAX</div>
-            <pre>{{ m.new_dax }}</pre>
-          </div>
-        </div>
-        {% elif m.status == 'added' %}
-        <div class="dax-box new" style="margin-top:0.5rem;">
-          <div class="dax-label">New DAX</div>
-          <pre>{{ m.new_dax }}</pre>
-        </div>
-        {% elif m.status == 'removed' %}
-        <div class="dax-box old" style="margin-top:0.5rem;">
-          <div class="dax-label">Old DAX</div>
-          <pre>{{ m.old_dax }}</pre>
-        </div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    {% else %}
+    
       <p style="color:#aaa; font-size:0.85rem;">No measure changes.</p>
-    {% endif %}
+    
   </div>
-  {% endif %}
+  
 
 
   <!-- ══════════════════════════════════════════════════════ -->
   <!--  REPORT SECTION                                        -->
   <!-- ══════════════════════════════════════════════════════ -->
-  {% if report %}
+  
   <h2>📄 Report Changes</h2>
 
   <!-- Pages -->
   <div class="panel">
     <h3>Pages</h3>
-    {% if report.pages_added %}
-      {% for p in report.pages_added %}
-        <span class="tag added">+ {{ p }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if report.pages_removed %}
-      {% for p in report.pages_removed %}
-        <span class="tag removed">- {{ p }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if not report.pages_added and not report.pages_removed %}
+    
+    
+    
       <p style="color:#aaa; font-size:0.85rem;">No page changes.</p>
-    {% endif %}
+    
   </div>
 
   <!-- Visuals -->
  <!-- Visuals -->
 <div class="panel">
   <h3>Visuals Modified</h3>
-  {% if report.visuals_modified %}
-  {% for v in report.visuals_modified %}
+  
+  
   <div style="margin-bottom: 1.5rem; border: 1px solid #e8edf2; border-radius:8px; padding: 1rem;">
 
     <!-- Visual Header -->
     <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:0.8rem;">
-      <strong>{{ v.page }}</strong>
-      <span class="tag {{ v.status }}">{{ v.status }}</span>
-      <span style="font-size:0.8rem; color:#888;">{{ v.visual_type }}</span>
+      <strong>Page 1</strong>
+      <span class="tag modified">modified</span>
+      <span style="font-size:0.8rem; color:#888;">clusteredBarChart</span>
     </div>
 
     <!-- Chart Type Change -->
-    {% if v.changes.property_changes %}
+    
     <div style="margin-bottom:0.8rem;">
       <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.4rem;">Chart Type</div>
       <div class="dax-grid">
-        <div class="dax-box old"><div class="dax-label">Old</div><pre>{{ v.changes.visual_type.old }}</pre></div>
-        <div class="dax-box new"><div class="dax-label">New</div><pre>{{ v.changes.visual_type.new }}</pre></div>
+        <div class="dax-box old"><div class="dax-label">Old</div><pre>clusteredColumnChart</pre></div>
+        <div class="dax-box new"><div class="dax-label">New</div><pre>clusteredBarChart</pre></div>
       </div>
     </div>
-    {% endif %}
+    
 
     <!-- Field/Column Changes -->
-    {% if v.changes.values %}
+    
     <div style="margin-bottom:0.8rem;">
       <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.4rem;">Property Changes</div>
       <table>
         <thead><tr><th>Property</th><th>Old Value</th><th>New Value</th></tr></thead>
         <tbody>
-          {% for key, val in v.changes.property_changes.items() %}
+          
           <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">{{ key }}</td>
-            <td><span class="tag removed">{{ val.old_value }}</span></td>
-            <td><span class="tag added">{{ val.new_value }}</span></td>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['visualType']</td>
+            <td><span class="tag removed">clusteredColumnChart</span></td>
+            <td><span class="tag added">clusteredBarChart</span></td>
           </tr>
-          {% endfor %}
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['queryState']['Category']['projections'][0]['field']['Column']['Property']</td>
+            <td><span class="tag removed">CustomerID</span></td>
+            <td><span class="tag added">FirstName</span></td>
+          </tr>
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['queryState']['Category']['projections'][0]['queryRef']</td>
+            <td><span class="tag removed">Customers1.CustomerID</span></td>
+            <td><span class="tag added">Customers1.FirstName</span></td>
+          </tr>
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['queryState']['Category']['projections'][0]['nativeQueryRef']</td>
+            <td><span class="tag removed">CustomerID</span></td>
+            <td><span class="tag added">FirstName</span></td>
+          </tr>
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['sortDefinition']['sort'][0]['field']['Column']['Property']</td>
+            <td><span class="tag removed">CustomerID</span></td>
+            <td><span class="tag added">FirstName</span></td>
+          </tr>
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['sortDefinition']['sort'][0]['direction']</td>
+            <td><span class="tag removed">Descending</span></td>
+            <td><span class="tag added">Ascending</span></td>
+          </tr>
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['filterConfig']['filters'][1]</td>
+            <td><span class="tag removed">{'name': '910d3605de39afec4feb', 'field': {'Aggregation': {'Expression': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'AnnualIncome'}}, 'Function': 0}}, 'type': 'Advanced'}</span></td>
+            <td><span class="tag added">{'name': 'b035a72d0010af8b40b3', 'field': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'FirstName'}}, 'type': 'Categorical'}</span></td>
+          </tr>
+          
+          <tr>
+            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['filterConfig']['filters'][0]</td>
+            <td><span class="tag removed">{'name': '6ecf3eae0ba6bfe030fb', 'field': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'CustomerID'}}, 'type': 'Categorical'}</span></td>
+            <td><span class="tag added">{'name': 'fbe9e95e551bc8c16660', 'field': {'Aggregation': {'Expression': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'AnnualIncome'}}, 'Function': 0}}, 'type': 'Advanced'}</span></td>
+          </tr>
+          
         </tbody>
       </table>
     </div>
-    {% endif %}
+    
 
     <!-- Fields Added -->
-    {% if v.changes.fields_added %}
-    <div style="margin-bottom:0.5rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.3rem;">Fields Added</div>
-      {% for k, val in v.changes.fields_added.items() %}
-        <span class="tag added">+ {{ val }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
+    
 
     <!-- Fields Removed -->
-    {% if v.changes.fields_removed %}
-    <div style="margin-bottom:0.5rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.3rem;">Fields Removed</div>
-      {% for k, val in v.changes.fields_removed.items() %}
-        <span class="tag removed">- {{ val }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
+    
 
   </div>
-  {% endfor %}
-  {% else %}
-  <p style="color:#aaa; font-size:0.85rem;">No visual changes.</p>
-  {% endif %}
+  
+  
 </div>
 
   <!-- Filters -->
   <div class="panel">
     <h3>Filters & Slicers</h3>
-    {% if report.filters_changed or report.slicers_changed %}
+    
     <table>
       <thead><tr><th>Page</th><th>Type</th></tr></thead>
       <tbody>
-        {% for f in report.filters_changed %}
-        <tr><td>{{ f.page }}</td><td><span class="tag modified">Filter Changed</span></td></tr>
-        {% endfor %}
-        {% for s in report.slicers_changed %}
-        <tr><td>{{ s.page }}</td><td><span class="tag modified">Slicer Changed</span></td></tr>
-        {% endfor %}
+        
+        <tr><td>Page 1</td><td><span class="tag modified">Filter Changed</span></td></tr>
+        
+        
       </tbody>
     </table>
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No filter or slicer changes.</p>
-    {% endif %}
+    
   </div>
   <!-- Fields Changed -->
-{% if report.fields_changed %}
+
 <div class="panel">
   <h3>Field / Column Swaps</h3>
   <table>
     <thead><tr><th>Page</th><th>Visual ID</th><th>Removed</th><th>Added</th></tr></thead>
     <tbody>
-      {% for f in report.fields_changed %}
+      
       <tr>
-        <td>{{ f.page }}</td>
-        <td style="font-size:0.75rem; color:#aaa;">{{ f.visual_id }}</td>
-        <td>{% for field in f.fields_removed %}<span class="tag removed">{{ field }}</span>{% endfor %}</td>
-        <td>{% for field in f.fields_added %}<span class="tag added">{{ field }}</span>{% endfor %}</td>
+        <td>Page 1</td>
+        <td style="font-size:0.75rem; color:#aaa;">8bfdbd317dd58e392a95</td>
+        <td><span class="tag removed">Customers1.CustomerID</span></td>
+        <td><span class="tag added">Customers1.FirstName</span></td>
       </tr>
-      {% endfor %}
+      
     </tbody>
   </table>
 </div>
-{% endif %}
-  {% endif %}
+
+  
 
 
   <!-- ══════════════════════════════════════════════════════ -->
   <!--  LAYOUT SECTION                                        -->
   <!-- ══════════════════════════════════════════════════════ -->
-  {% if layout %}
+  
   <h2>🎨 Layout Changes</h2>
 
   <div class="panel">
     <h3>Canvas Settings</h3>
-    {% if layout.canvas_settings %}
-    <table>
-      <thead><tr><th>Page</th><th>Changed Properties</th></tr></thead>
-      <tbody>
-        {% for c in layout.canvas_settings %}
-        <tr>
-          <td>{{ c.page }}</td>
-          <td>{{ c.changes.modified.keys() | list | join(', ') }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
+    
       <p style="color:#aaa; font-size:0.85rem;">No canvas changes.</p>
-    {% endif %}
+    
   </div>
 
   <div class="panel">
     <h3>Bookmarks</h3>
-    {% set bm_total = layout.bookmarks.added | length + layout.bookmarks.removed | length + layout.bookmarks.modified | length %}
-    {% if bm_total > 0 %}
-      <span class="tag added">{{ layout.bookmarks.added | length }} Added</span>
-      <span class="tag removed">{{ layout.bookmarks.removed | length }} Removed</span>
-      <span class="tag modified">{{ layout.bookmarks.modified | length }} Modified</span>
-    {% else %}
+    
+    
       <p style="color:#aaa; font-size:0.85rem;">No bookmark changes.</p>
-    {% endif %}
+    
   </div>
 
   <div class="panel">
     <h3>Z-Order</h3>
-    {% if layout.z_order %}
-    <table>
-      <thead><tr><th>Page</th><th>Changes</th></tr></thead>
-      <tbody>
-        {% for z in layout.z_order %}
-        <tr>
-          <td>{{ z.page }}</td>
-          <td>
-            {% if z.changes.added %}
-              <span class="tag added">{{ z.changes.added | length }} Added</span>
-            {% endif %}
-            {% if z.changes.removed %}
-              <span class="tag removed">{{ z.changes.removed | length }} Removed</span>
-            {% endif %}
-            {% if z.changes.modified %}
-              <span class="tag modified">{{ z.changes.modified | length }} Modified</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
+    
       <p style="color:#aaa; font-size:0.85rem;">No z-order changes.</p>
-    {% endif %}
+    
   </div>
-  {% endif %}
+  
 
   <!-- ── Footer ─────────────────────────────────────────── -->
   <div class="footer">
-    Power BI Diff Tool — Generated {{ generated_at }} | {{ environment }} environment
+    Power BI Diff Tool — Generated 2026-05-29 10:34:46 | local environment
   </div>
 
 </body>
