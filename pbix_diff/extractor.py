@@ -66,74 +66,36 @@ def _extract_pbix(pbix_path: Path) -> dict:
 
 # ─── PBIP Folder Traversal ────────────────────────────────────
 def _extract_pbip(folder_path: Path) -> dict:
-    """
-    Traverses a .pbip project folder with this structure:
-    
-    new/
-    ├── new.Report/
-    │   ├── definition/
-    │   ├── StaticResources/
-    │   ├── .platform
-    │   └── definition.pbir       ← report definition
-    ├── new.SemanticModel/
-    │   ├── definition/
-    │   ├── .platform
-    │   └── definition.pbix       ← model definition
-    └── new.pbip                  ← marker file
-    """
     print(f"[extractor] Traversing PBIP folder: {folder_path}")
 
     model_path  = None
     report_path = None
 
-    # ── Locate SemanticModel folder ───────────────────────────
+    # ── SemanticModel folder → pass whole folder to model comparator
     semantic_folders = [
         f for f in folder_path.iterdir()
         if f.is_dir() and "SemanticModel" in f.name
     ]
-
     if semantic_folders:
-        semantic_dir = semantic_folders[0]
-        print(f"[extractor] Found SemanticModel: {semantic_dir.name}")
-
-        # Look for definition.pbix or model.bim inside
-        model_candidates = (
-            list(semantic_dir.rglob("definition.pbix")) +
-            list(semantic_dir.rglob("model.bim")) +
-            list(semantic_dir.rglob("*.bim"))
-        )
-        model_path = model_candidates[0] if model_candidates else None
+        model_path = semantic_folders[0]   # ← whole folder, not a file
+        print(f"[extractor] Found SemanticModel: {model_path.name}")
     else:
         print("[extractor] WARNING: No SemanticModel folder found")
 
-    # ── Locate Report folder ──────────────────────────────────
+    # ── Report folder
     report_folders = [
         f for f in folder_path.iterdir()
         if f.is_dir() and "Report" in f.name and "SemanticModel" not in f.name
     ]
-
     if report_folders:
-        report_dir = report_folders[0]
-        print(f"[extractor] Found Report folder: {report_dir.name}")
-
-        # Look for definition.pbir or report.json inside
-        report_candidates = (
-            list(report_dir.rglob("definition.pbir")) +
-            list(report_dir.rglob("report.json")) +
-            list(report_dir.rglob("*.pbir"))
-        )
-        report_path = report_candidates[0] if report_candidates else None
+        report_path = report_folders[0]
+        print(f"[extractor] Found Report folder: {report_path.name}")
     else:
         print("[extractor] WARNING: No Report folder found")
 
-    if not model_path:
-        print("[extractor] WARNING: Model definition not found in SemanticModel")
-    if not report_path:
-        print("[extractor] WARNING: Report definition not found in Report folder")
-
     return {"model_path": model_path, "report_path": report_path}
 
-
+    
 # ─── File Finder Helper ───────────────────────────────────────
 def _find_file(base_dir: Path, candidates: list[str]) -> Path | None:
     for name in candidates:

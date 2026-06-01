@@ -1,0 +1,42 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
+  "name": "5_card_avg_income",
+  "position": {
+    "x": 420,
+    "y": 300,
+    "z": 1,
+    "height": 260,
+    "width": 380,
+    "tabOrder": 5
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "Customers1"
+                        }
+                      },
+                      "Property": "AnnualIncome"
+                    }
+                  },
+                  "Function": 1
+                }
+              },
+              "queryRef": "Avg(Customers1.AnnualIncome)",
+              "nativeQueryRef": "Average of AnnualIncome"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

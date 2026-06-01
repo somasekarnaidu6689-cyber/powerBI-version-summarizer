@@ -1,393 +1,1489 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
+
+  <meta charset="UTF-8"/>
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Power BI Diff Report</title>
+
+  <title>Power BI Diff Report — Psiog Digital</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+
   <style>
-    /* ── Reset & Base ───────────────────────────────────── */
+
+    /* ── Brand Palette ───────────────────────────────────── */
+
+    :root {
+
+      --brand-primary: #2CB7BE;
+
+      --brand-accent:  #C9D91A;
+
+      --bg:           #FFFFFF;
+
+      --bg-soft:      #F7FCFB;
+
+      --panel:        #FFFFFF;
+
+      --panel-alt:    #F4F9F8;
+
+      --border:       #D8E8E7;
+
+      --text:         #102A33;
+
+      --muted:        #5D6D71;
+
+      --sub:          #6C7A80;
+
+      --shadow:       0 20px 60px rgba(44, 183, 190, 0.08);
+
+      --mono:          'JetBrains Mono', monospace;
+
+      --sans:          'Avenir Next Rounded', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+      /* Legacy theme aliases for older selectors */
+      --psiog-navy:   #F7FCFB;
+      --psiog-card:   #FFFFFF;
+      --psiog-card2:  #F4F9F8;
+      --psiog-border: rgba(36, 103, 107, 0.16);
+      --psiog-text:   #102A33;
+      --psiog-muted:  #5D6D71;
+      --psiog-sub:    #6C7A80;
+      --psiog-blue:   #2CB7BE;
+      --psiog-green:  #2F855A;
+      --psiog-red:    #DC2626;
+      --psiog-amber:  #C9D91A;
+      --psiog-purple: #6D28D9;
+      --psiog-cyan:   #2CB7BE;
+      --psiog-dark:   #F1F8F8;
+
+    }
+
+
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f6f9;
-      color: #1a1a2e;
-      padding: 2rem;
+    html, body { height: 100%; font-family: var(--sans); }
+
+    body { background: var(--bg); color: var(--text); }
+
+
+
+    /* ── Topbar ──────────────────────────────────────────── */
+
+    .topbar {
+
+      background: rgba(255,255,255,0.94);
+
+      border-bottom: 1px solid var(--border);
+
+      padding: 0.8rem 1.8rem;
+
+      display: flex; align-items: center; gap: 1.2rem;
+
+      position: sticky; top: 0; z-index: 300;
+
+      backdrop-filter: blur(12px);
+
+      box-shadow: 0 10px 35px rgba(43, 181, 190, 0.08);
+
     }
 
-    h1 { font-size: 1.8rem; color: #0f3460; margin-bottom: 0.3rem; }
-    h2 { font-size: 1.2rem; color: #16213e; margin: 1.5rem 0 0.8rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.4rem; }
-    h3 { font-size: 1rem; color: #0f3460; margin: 1rem 0 0.4rem; }
+    .logo-area { display: flex; align-items: center; gap: 0.8rem; }
 
-    /* ── Header ─────────────────────────────────────────── */
-    .header {
-      background: #0f3460;
-      color: white;
-      padding: 1.5rem 2rem;
-      border-radius: 10px;
-      margin-bottom: 1.5rem;
-    }
-    .header p { font-size: 0.85rem; opacity: 0.85; margin-top: 0.3rem; }
-    .header .meta { display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap; }
-    .header .meta span { background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; }
+    .logo-img { height: 32px; object-fit: contain; }
 
-    /* ── Warning Banner ──────────────────────────────────── */
-    .warning {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 0.8rem 1.2rem;
-      border-radius: 6px;
-      margin-bottom: 1.2rem;
-      font-size: 0.9rem;
+    .logo-divider { width: 1px; height: 28px; background: var(--psiog-border); }
+
+    .logo-label {
+
+      font-family: var(--mono); font-size: 0.72rem;
+
+      color: var(--psiog-cyan); letter-spacing: 0.04em;
+
     }
 
-    /* ── Summary Cards ───────────────────────────────────── */
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem 1.2rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
-      text-align: center;
-    }
-    .card .count { font-size: 2rem; font-weight: 700; color: #0f3460; }
-    .card .label { font-size: 0.78rem; color: #666; margin-top: 0.2rem; }
-    .card.green .count { color: #2e7d32; }
-    .card.red   .count { color: #c62828; }
-    .card.amber .count { color: #e65100; }
+    .topbar-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-left: auto; }
 
-    /* ── No Changes ──────────────────────────────────────── */
-    .no-changes {
-      background: #e8f5e9;
-      border-left: 4px solid #43a047;
-      padding: 1rem 1.5rem;
-      border-radius: 6px;
-      font-weight: 600;
-      color: #2e7d32;
-      margin-bottom: 1.5rem;
+    .chip {
+
+      font-size: 0.65rem; font-family: var(--mono);
+
+      background: rgba(14,165,233,0.07); border: 1px solid rgba(14,165,233,0.18);
+
+      color: var(--psiog-sub); padding: 0.2rem 0.55rem; border-radius: 3px;
+
     }
 
-    /* ── Section Panels ──────────────────────────────────── */
+    .chip b { color: var(--psiog-cyan); }
+
+    .dl-btn {
+
+      display: inline-flex; align-items: center; gap: 0.35rem;
+
+      padding: 0.35rem 0.85rem; border-radius: 4px; font-size: 0.72rem;
+
+      font-family: var(--mono); text-decoration: none; cursor: pointer;
+
+      transition: all 0.15s; white-space: nowrap; border: 1px solid;
+
+    }
+
+    .dl-pdf  { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.3);  color: #FCA5A5; }
+
+    .dl-xl   { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #6EE7B7; }
+
+    .dl-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+
+
+    /* ── Stat Row ────────────────────────────────────────── */
+
+    .statrow {
+
+      display: flex; background: var(--psiog-dark);
+
+      border-bottom: 1px solid var(--psiog-border); overflow-x: auto;
+
+    }
+
+    .stat {
+
+      flex: 1; min-width: 110px; padding: 0.85rem 1rem;
+
+      text-align: center; border-right: 1px solid var(--psiog-border);
+
+      position: relative;
+
+    }
+
+    .stat::after {
+
+      content: ''; position: absolute; bottom: 0; left: 50%;
+
+      transform: translateX(-50%); width: 0; height: 2px;
+
+      background: var(--psiog-blue); transition: width 0.3s;
+
+    }
+
+    .stat:hover::after { width: 60%; }
+
+    .stat:last-child { border-right: none; }
+
+    .snum { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; line-height: 1; }
+
+    .slbl { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--psiog-muted); margin-top: 0.2rem; }
+
+    .g { color: var(--psiog-green); }
+
+    .r { color: var(--psiog-red); }
+
+    .a { color: var(--psiog-amber); }
+
+    .b { color: var(--psiog-blue); }
+
+    .p { color: var(--psiog-purple); }
+
+    .c { color: var(--psiog-cyan); }
+
+
+
+    /* ── Shell ───────────────────────────────────────────── */
+
+    .shell { display: flex; height: calc(100vh - 116px); }
+
+
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+
+    .sidebar {
+
+      width: 224px; flex-shrink: 0;
+
+      background: var(--psiog-dark);
+
+      border-right: 1px solid var(--psiog-border);
+
+      display: flex; flex-direction: column; overflow: hidden;
+
+    }
+
+    .sidebar-tabs {
+
+      display: flex; border-bottom: 1px solid var(--psiog-border);
+
+      flex-shrink: 0;
+
+    }
+
+    .stab {
+
+      flex: 1; padding: 0.65rem 0.4rem; text-align: center;
+
+      font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+
+      letter-spacing: 0.07em; cursor: pointer; color: var(--psiog-muted);
+
+      border-bottom: 2px solid transparent; transition: all 0.15s;
+
+    }
+
+    .stab.active { color: var(--psiog-cyan); border-bottom-color: var(--psiog-cyan); }
+
+    .stab:hover:not(.active) { color: var(--psiog-text); }
+
+    .nav-list { flex: 1; overflow-y: auto; padding: 0.4rem 0; }
+
+    .nav-list::-webkit-scrollbar { width: 3px; }
+
+    .nav-list::-webkit-scrollbar-thumb { background: var(--psiog-border); }
+
+    .nav-grp {
+
+      font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em;
+
+      color: var(--psiog-muted); padding: 0.55rem 1rem 0.18rem;
+
+    }
+
+    .nav-item {
+
+      display: flex; align-items: center; gap: 0.5rem;
+
+      padding: 0.45rem 1rem; cursor: pointer; font-size: 0.78rem;
+
+      color: var(--psiog-sub); border-left: 2px solid transparent;
+
+      transition: all 0.12s; user-select: none;
+
+    }
+
+    .nav-item:hover { background: rgba(14,165,233,0.05); color: var(--psiog-text); }
+
+    .nav-item.active {
+
+      background: rgba(14,165,233,0.08); border-left-color: var(--psiog-blue);
+
+      color: var(--psiog-blue);
+
+    }
+
+    .ndot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+    .ndot.g { background: var(--psiog-green); }
+
+    .ndot.r { background: var(--psiog-red); }
+
+    .ndot.a { background: var(--psiog-amber); }
+
+    .ndot.b { background: var(--psiog-blue); }
+
+    .ndot.p { background: var(--psiog-purple); }
+
+    .ndot.c { background: var(--psiog-cyan); }
+
+    .ndot.m { background: var(--psiog-muted); }
+
+    .nbadge {
+
+      margin-left: auto; font-size: 0.6rem; font-family: var(--mono);
+
+      background: rgba(14,165,233,0.1); color: var(--psiog-blue);
+
+      padding: 0.06rem 0.32rem; border-radius: 3px;
+
+    }
+
+
+
+    /* ── Content ─────────────────────────────────────────── */
+
+    .content { flex: 1; overflow-y: auto; padding: 1.6rem 2rem 6rem; }
+
+    .content::-webkit-scrollbar { width: 4px; }
+
+    .content::-webkit-scrollbar-thumb { background: var(--psiog-border); border-radius: 2px; }
+
+    .section { display: none; animation: fi 0.15s ease; }
+
+    .section.active { display: block; }
+
+    @keyframes fi { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+
+
+
+    .sec-title {
+
+      font-size: 0.85rem; font-weight: 600; color: var(--psiog-cyan);
+
+      margin-bottom: 1.2rem; padding-bottom: 0.5rem;
+
+      border-bottom: 1px solid var(--psiog-border);
+
+      display: flex; align-items: center; gap: 0.5rem;
+
+      font-family: var(--mono);
+
+    }
+
+    .sec-title .badge {
+
+      margin-left: auto; font-size: 0.65rem;
+
+      background: rgba(14,165,233,0.12); border: 1px solid rgba(14,165,233,0.25);
+
+      color: var(--psiog-blue); padding: 0.1rem 0.5rem; border-radius: 3px;
+
+    }
+
+
+
+    /* ── Panel ───────────────────────────────────────────── */
+
     .panel {
-      background: white;
-      border-radius: 8px;
-      padding: 1.2rem 1.5rem;
-      margin-bottom: 1.2rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+
+      background: var(--psiog-card); border: 1px solid var(--psiog-border);
+
+      border-radius: 8px; padding: 1.1rem 1.3rem; margin-bottom: 0.8rem;
+
     }
+
+    .panel-title {
+
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em;
+
+      color: var(--psiog-muted); margin-bottom: 0.9rem; font-family: var(--mono);
+
+    }
+
+
 
     /* ── Tags ────────────────────────────────────────────── */
+
     .tag {
-      display: inline-block;
-      padding: 0.2rem 0.7rem;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin: 0.2rem;
-    }
-    .tag.added   { background: #e8f5e9; color: #2e7d32; }
-    .tag.removed { background: #ffebee; color: #c62828; }
-    .tag.modified{ background: #fff3e0; color: #e65100; }
 
-    /* ── DAX Side-by-Side ────────────────────────────────── */
-    .dax-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
-    .dax-box { border-radius: 6px; padding: 0.8rem; font-size: 0.8rem; }
-    .dax-box.old { background: #fff5f5; border: 1px solid #ffcdd2; }
-    .dax-box.new { background: #f1f8e9; border: 1px solid #c5e1a5; }
-    .dax-box pre { white-space: pre-wrap; word-break: break-word; font-family: 'Cascadia Code', 'Consolas', monospace; }
-    .dax-label { font-size: 0.72rem; font-weight: 700; margin-bottom: 0.4rem; color: #888; text-transform: uppercase; }
+      display: inline-block; padding: 0.15rem 0.55rem; border-radius: 3px;
 
-    /* ── Table ───────────────────────────────────────────── */
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
-    th { background: #f0f4f8; text-align: left; padding: 0.5rem 0.8rem; color: #444; }
-    td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #f0f0f0; }
-    tr:hover td { background: #fafafa; }
+      font-size: 0.68rem; font-weight: 600; font-family: var(--mono); margin: 0.12rem;
 
-    /* ── Footer ──────────────────────────────────────────── */
-    .footer {
-      text-align: center;
-      font-size: 0.75rem;
-      color: #aaa;
-      margin-top: 2rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+
     }
+
+    .tag.add  { background: rgba(16,185,129,0.1);  color: var(--psiog-green);  border: 1px solid rgba(16,185,129,0.25); }
+
+    .tag.rem  { background: rgba(239,68,68,0.1);   color: var(--psiog-red);    border: 1px solid rgba(239,68,68,0.25); }
+
+    .tag.mod  { background: rgba(245,158,11,0.1);  color: var(--psiog-amber);  border: 1px solid rgba(245,158,11,0.25); }
+
+    .tag.inf  { background: rgba(14,165,233,0.1);  color: var(--psiog-blue);   border: 1px solid rgba(14,165,233,0.25); }
+
+    .tag.lo   { background: rgba(16,185,129,0.12); color: var(--psiog-green); }
+
+    .tag.med  { background: rgba(245,158,11,0.12); color: var(--psiog-amber); }
+
+    .tag.hi   { background: rgba(239,68,68,0.12);  color: var(--psiog-red); }
+
+
+
+    /* ── Table — with truncation ─────────────────────────── */
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
+
+    th {
+
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+
+      color: var(--psiog-muted); padding: 0.45rem 0.7rem;
+
+      border-bottom: 1px solid var(--psiog-border); text-align: left;
+
+      background: rgba(14,165,233,0.04); font-family: var(--mono);
+
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+
+    }
+
+    td {
+
+      padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(30,45,69,0.5);
+
+      vertical-align: top; overflow: hidden; text-overflow: ellipsis;
+
+      white-space: nowrap; max-width: 0;
+
+    }
+
+    td.wrap { white-space: normal; word-break: break-word; }
+
+    td:hover { white-space: normal; word-break: break-word; max-width: none; }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(14,165,233,0.025); }
+
+    .tooltip-cell {
+
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+
+      cursor: help; display: block;
+
+    }
+
+    .tooltip-cell[title]:hover::after {
+
+      content: attr(title);
+
+      position: fixed; z-index: 999;
+
+      background: #1E2D45; color: var(--psiog-text);
+
+      border: 1px solid var(--psiog-border);
+
+      padding: 0.4rem 0.7rem; border-radius: 4px;
+
+      font-size: 0.72rem; max-width: 400px;
+
+      white-space: pre-wrap; word-break: break-all;
+
+      pointer-events: none; top: auto; left: auto;
+
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+
+    }
+
+
+
+    /* ── DAX Block ───────────────────────────────────────── */
+
+    .dax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-top: 0.4rem; }
+
+    .dax-box { border-radius: 5px; padding: 0.75rem; font-family: var(--mono); font-size: 0.7rem; }
+
+    .dax-box.old { background: rgba(239,68,68,0.05);  border: 1px solid rgba(239,68,68,0.18); }
+
+    .dax-box.new { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.18); }
+
+    .dax-box pre { white-space: pre-wrap; word-break: break-word; line-height: 1.6; color: var(--psiog-text); }
+
+    .dax-lbl { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--psiog-muted); margin-bottom: 0.3rem; }
+
+
+
+    /* ── Table Card ──────────────────────────────────────── */
+
+    .tbl-card {
+
+      border: 1px solid rgba(16,185,129,0.18); border-left: 3px solid var(--psiog-green);
+
+      border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 0.7rem;
+
+      background: rgba(16,185,129,0.02);
+
+    }
+
+    .tbl-card.rem { border-color: rgba(239,68,68,0.2); border-left-color: var(--psiog-red); background: rgba(239,68,68,0.02); }
+
+    .tbl-card-head { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+
+    .tbl-nm { font-family: var(--mono); font-weight: 600; font-size: 0.85rem; color: var(--psiog-green); }
+
+    .tbl-nm.auto { color: var(--psiog-muted); font-size: 0.72rem; }
+
+    .auto-lbl {
+
+      font-size: 0.58rem; color: var(--psiog-muted); background: var(--psiog-card2);
+
+      padding: 0.08rem 0.35rem; border-radius: 3px; border: 1px solid var(--psiog-border);
+
+    }
+
+
+
+    /* ── Visual Card ─────────────────────────────────────── */
+
+    .vis-card {
+
+      background: var(--psiog-card2); border: 1px solid var(--psiog-border);
+
+      border-radius: 6px; padding: 0.85rem 1rem; margin-bottom: 0.55rem;
+
+    }
+
+    .vis-card.add { border-left: 3px solid var(--psiog-green); }
+
+    .vis-card.rem { border-left: 3px solid var(--psiog-red); }
+
+    .vis-card.mod { border-left: 3px solid var(--psiog-amber); }
+
+    .vis-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; flex-wrap: wrap; }
+
+
+
+    /* ── Page Banner ─────────────────────────────────────── */
+
+    .pg-banner {
+
+      border-radius: 6px; padding: 0.8rem 1.1rem; margin-bottom: 0.8rem;
+
+      font-size: 0.82rem; border: 1px solid;
+
+    }
+
+    .pg-banner.new-pg { border-color: rgba(16,185,129,0.25); background: rgba(16,185,129,0.04); }
+
+    .pg-banner.del-pg { border-color: rgba(239,68,68,0.25);  background: rgba(239,68,68,0.04); }
+
+
+
+    /* ── AI Section ──────────────────────────────────────── */
+
+    .ai-exec {
+
+      background: linear-gradient(135deg, rgba(14,165,233,0.07), rgba(129,140,248,0.07));
+
+      border: 1px solid rgba(14,165,233,0.2); border-radius: 8px;
+
+      padding: 1.1rem 1.3rem; margin-bottom: 0.8rem;
+
+      line-height: 1.8; font-size: 0.87rem; color: var(--psiog-text);
+
+    }
+
+    .enh-card { background: var(--psiog-card2); border: 1px solid var(--psiog-border); border-radius: 6px; padding: 0.75rem 0.95rem; margin-bottom: 0.55rem; }
+
+    .risk-card { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 0.75rem 0.95rem; margin-bottom: 0.55rem; }
+
+
+
+    .empty { color: var(--psiog-muted); font-size: 0.78rem; padding: 0.8rem 0; font-style: italic; }
+
+
+
+    /* ── Summary Grid ────────────────────────────────────── */
+
+    .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; }
+
+    .sum-card {
+
+      background: var(--psiog-card); border: 1px solid var(--psiog-border);
+
+      border-radius: 8px; padding: 1rem 1.2rem;
+
+    }
+
+
+
+    /* ── Bottom Navbar ───────────────────────────────────── */
+
+    .bottom-nav {
+
+      position: fixed; bottom: 0; left: 0; right: 0;
+
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(16px);
+
+      border-top: 1px solid var(--border);
+
+      padding: 0.55rem 1.2rem; display: flex; gap: 0.4rem;
+
+      overflow-x: auto; z-index: 300; scrollbar-width: none;
+
+      box-shadow: 0 -12px 28px rgba(44, 183, 190, 0.08);
+
+    }
+
+    .bottom-nav::-webkit-scrollbar { display: none; }
+
+    .btab {
+
+      flex-shrink: 0; padding: 0.35rem 0.9rem; border-radius: 4px;
+
+      font-size: 0.72rem; font-family: var(--mono); cursor: pointer;
+
+      border: 1px solid var(--psiog-border); color: var(--psiog-muted);
+
+      background: var(--psiog-card); transition: all 0.12s; white-space: nowrap;
+
+    }
+
+    .btab:hover { border-color: var(--psiog-blue); color: var(--psiog-blue); }
+
+    .btab.active { background: var(--psiog-blue); border-color: var(--psiog-blue); color: #fff; font-weight: 600; }
+
+    .btab.new-t { border-color: rgba(16,185,129,0.3); color: var(--psiog-green); }
+
+    .btab.del-t { border-color: rgba(239,68,68,0.3);  color: var(--psiog-red); }
+
+    .btab.new-t.active, .btab.del-t.active { background: var(--psiog-blue); color: #fff; }
+
+    .btab.chg::after { content: '●'; margin-left: 0.3rem; font-size: 0.45rem; color: var(--psiog-amber); vertical-align: middle; }
+
+    .btab.active.chg::after { color: rgba(255,255,255,0.6); }
+
+
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+
+    ::-webkit-scrollbar-track { background: var(--psiog-navy); }
+
+    ::-webkit-scrollbar-thumb { background: var(--psiog-border); border-radius: 2px; }
+
   </style>
+
 </head>
+
 <body>
 
-  <!-- ── Header ─────────────────────────────────────────── -->
-  <div class="header">
-    <h1>⚡ Power BI Version Comparison Report</h1>
-    <p>Generated at 2026-05-29 10:34:46 | Environment: local | Format: pbix</p>
-    <div class="meta">
-      <span>📂 Old: powerBi\oldFile.pbix</span>
-      <span>📂 New: powerBi\newFile.pbix</span>
-      <span>⏱ Duration: 0.06s</span>
+
+
+<!-- ── Topbar ───────────────────────────────────────────────── -->
+
+<div class="topbar">
+
+  <div class="logo-area">
+
+    <img src="assets/logo.png" alt="Psiog Digital" class="logo-img"
+
+         onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='flex'"/>
+
+    <div class="logo-fallback" style="display:none; align-items:center; gap:0.4rem;">
+
+      <div style="width:28px;height:28px;background:linear-gradient(135deg,#0EA5E9,#818CF8);border-radius:5px;
+
+                  display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;">P</div>
+
+      <span style="font-family:var(--mono);font-size:0.82rem;font-weight:600;color:var(--psiog-text);">PSIOG</span>
+
     </div>
+
+    <div class="logo-divider"></div>
+
+    <span class="logo-label">Power BI Diff Report</span>
+
   </div>
 
-  <!-- ── Databricks Warning ──────────────────────────────── -->
-  
+  <div class="topbar-chips">
 
-  <!-- ── No Changes ─────────────────────────────────────── -->
-  
+    <div class="chip">Generated <b>2026-06-01 10:57:13</b></div>
 
-  <!-- ── Summary Cards ──────────────────────────────────── -->
-  <div class="summary-grid">
-    <div class="card green">
-      <div class="count">0</div>
-      <div class="label">Tables Added</div>
-    </div>
-    <div class="card red">
-      <div class="count">0</div>
-      <div class="label">Tables Removed</div>
-    </div>
-    <div class="card amber">
-      <div class="count">0</div>
-      <div class="label">Measures Changed</div>
-    </div>
-    <div class="card green">
-      <div class="count">0</div>
-      <div class="label">Pages Added</div>
-    </div>
-    <div class="card red">
-      <div class="count">0</div>
-      <div class="label">Pages Removed</div>
-    </div>
-    <div class="card amber">
-      <div class="count">1</div>
-      <div class="label">Visuals Modified</div>
-    </div>
+    <div class="chip">Env <b>local</b></div>
+
+    <div class="chip">Format <b>pbip</b></div>
+
+    <div class="chip">⏱ <b>0.21s</b></div>
+
   </div>
 
+  <div style="display:flex;gap:0.4rem;margin-left:0.5rem;flex-shrink:0;">
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!--  DATA MODEL SECTION                                    -->
-  <!-- ══════════════════════════════════════════════════════ -->
-  
-  <h2>📊 Data Model Changes</h2>
+    <a href="diff_report.pdf"  download class="dl-btn dl-pdf">⬇ PDF</a>
 
-  <!-- Tables -->
-  <div class="panel">
-    <h3>Tables</h3>
-    
-    
-    
-      <p style="color:#aaa; font-size:0.85rem;">No table changes.</p>
-    
+    <a href="diff_report.xlsx" download class="dl-btn dl-xl">⬇ Excel</a>
+
   </div>
 
-  <!-- Columns -->
-  <div class="panel">
-    <h3>Columns</h3>
-    
-      <p style="color:#aaa; font-size:0.85rem;">No column changes.</p>
-    
-  </div>
-
-  <!-- Measures (DAX side-by-side) -->
-  <div class="panel">
-    <h3>Measures</h3>
-    
-      <p style="color:#aaa; font-size:0.85rem;">No measure changes.</p>
-    
-  </div>
-  
+</div>
 
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!--  REPORT SECTION                                        -->
-  <!-- ══════════════════════════════════════════════════════ -->
-  
-  <h2>📄 Report Changes</h2>
 
-  <!-- Pages -->
-  <div class="panel">
-    <h3>Pages</h3>
-    
-    
-    
-      <p style="color:#aaa; font-size:0.85rem;">No page changes.</p>
-    
-  </div>
+<!-- ── Stat Row ─────────────────────────────────────────────── -->
 
-  <!-- Visuals -->
- <!-- Visuals -->
-<div class="panel">
-  <h3>Visuals Modified</h3>
-  
-  
-  <div style="margin-bottom: 1.5rem; border: 1px solid #e8edf2; border-radius:8px; padding: 1rem;">
+<div class="statrow">
 
-    <!-- Visual Header -->
-    <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:0.8rem;">
-      <strong>Page 1</strong>
-      <span class="tag modified">modified</span>
-      <span style="font-size:0.8rem; color:#888;">clusteredBarChart</span>
+  <div class="stat"><div class="snum g">1</div><div class="slbl">Tables Added</div></div>
+
+  <div class="stat"><div class="snum r">4</div><div class="slbl">Tables Removed</div></div>
+
+  <div class="stat"><div class="snum a">0</div><div class="slbl">Measures Changed</div></div>
+
+  <div class="stat"><div class="snum p">0</div><div class="slbl">Column Changes</div></div>
+
+  <div class="stat"><div class="snum g">0</div><div class="slbl">Pages Added</div></div>
+
+  <div class="stat"><div class="snum r">0</div><div class="slbl">Pages Removed</div></div>
+
+  <div class="stat"><div class="snum a">1</div><div class="slbl">Pages Changed</div></div>
+
+  <div class="stat"><div class="snum c">9</div><div class="slbl">Total Changes</div></div>
+
+</div>
+
+
+
+<!-- ── Shell ────────────────────────────────────────────────── -->
+
+<div class="shell">
+
+
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+
+  <div class="sidebar">
+
+    <div class="sidebar-tabs">
+
+      <div class="stab active" id="stab-model" onclick="switchTab('model')">🗄 Model</div>
+
+      <div class="stab" id="stab-report" onclick="switchTab('report')">📄 Report</div>
+
     </div>
 
-    <!-- Chart Type Change -->
-    
-    <div style="margin-bottom:0.8rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.4rem;">Chart Type</div>
-      <div class="dax-grid">
-        <div class="dax-box old"><div class="dax-label">Old</div><pre>clusteredColumnChart</pre></div>
-        <div class="dax-box new"><div class="dax-label">New</div><pre>clusteredBarChart</pre></div>
+
+
+    <!-- Model Nav -->
+
+    <div class="nav-list" id="nav-model">
+
+      <div class="nav-grp">Overview</div>
+
+      <div class="nav-item active" onclick="goto('overview',this)"><span class="ndot b"></span>Summary</div>
+
+      <div class="nav-grp">SemanticModel</div>
+
+      <div class="nav-item" onclick="goto('tables',this)">
+
+        <span class="ndot g"></span>Tables
+
+        <span class="nbadge">1+ 4-</span>
+
       </div>
+
+      <div class="nav-item" onclick="goto('columns',this)">
+
+        <span class="ndot a"></span>Columns
+
+        <span class="nbadge">0</span>
+
+      </div>
+
+      <div class="nav-item" onclick="goto('measures',this)">
+
+        <span class="ndot p"></span>Measures / DAX
+
+        <span class="nbadge">0</span>
+
+      </div>
+
+      <div class="nav-item" onclick="goto('partitions',this)">
+
+        <span class="ndot b"></span>Partitions
+
+        <span class="nbadge">0</span>
+
+      </div>
+
+      <div class="nav-item" onclick="goto('relationships',this)"><span class="ndot a"></span>Relationships</div>
+
+      <div class="nav-item" onclick="goto('roles',this)"><span class="ndot r"></span>Roles (RLS/OLS)</div>
+
+      
+
+      <div class="nav-grp">AI</div>
+
+      <div class="nav-item" onclick="goto('ai',this)"><span class="ndot p"></span>AI Analysis</div>
+
+      
+
     </div>
-    
 
-    <!-- Field/Column Changes -->
-    
-    <div style="margin-bottom:0.8rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.4rem;">Property Changes</div>
-      <table>
-        <thead><tr><th>Property</th><th>Old Value</th><th>New Value</th></tr></thead>
-        <tbody>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['visualType']</td>
-            <td><span class="tag removed">clusteredColumnChart</span></td>
-            <td><span class="tag added">clusteredBarChart</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['queryState']['Category']['projections'][0]['field']['Column']['Property']</td>
-            <td><span class="tag removed">CustomerID</span></td>
-            <td><span class="tag added">FirstName</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['queryState']['Category']['projections'][0]['queryRef']</td>
-            <td><span class="tag removed">Customers1.CustomerID</span></td>
-            <td><span class="tag added">Customers1.FirstName</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['queryState']['Category']['projections'][0]['nativeQueryRef']</td>
-            <td><span class="tag removed">CustomerID</span></td>
-            <td><span class="tag added">FirstName</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['sortDefinition']['sort'][0]['field']['Column']['Property']</td>
-            <td><span class="tag removed">CustomerID</span></td>
-            <td><span class="tag added">FirstName</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['visual']['query']['sortDefinition']['sort'][0]['direction']</td>
-            <td><span class="tag removed">Descending</span></td>
-            <td><span class="tag added">Ascending</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['filterConfig']['filters'][1]</td>
-            <td><span class="tag removed">{'name': '910d3605de39afec4feb', 'field': {'Aggregation': {'Expression': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'AnnualIncome'}}, 'Function': 0}}, 'type': 'Advanced'}</span></td>
-            <td><span class="tag added">{'name': 'b035a72d0010af8b40b3', 'field': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'FirstName'}}, 'type': 'Categorical'}</span></td>
-          </tr>
-          
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">root['filterConfig']['filters'][0]</td>
-            <td><span class="tag removed">{'name': '6ecf3eae0ba6bfe030fb', 'field': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'CustomerID'}}, 'type': 'Categorical'}</span></td>
-            <td><span class="tag added">{'name': 'fbe9e95e551bc8c16660', 'field': {'Aggregation': {'Expression': {'Column': {'Expression': {'SourceRef': {'Entity': 'Customers1'}}, 'Property': 'AnnualIncome'}}, 'Function': 0}}, 'type': 'Advanced'}</span></td>
-          </tr>
-          
-        </tbody>
-      </table>
+
+
+    <!-- Report Nav -->
+
+    <div class="nav-list" id="nav-report" style="display:none;">
+
+      
+
+      <div class="nav-grp">Changed</div>
+
+      
+
+      <div class="nav-item" onclick="goto('rp-0',this);activateTab('rt-0')">
+
+        <span class="ndot a"></span>
+
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" title="Page 1">Page 1</span>
+
+        <span class="nbadge">2</span>
+
+      </div>
+
+      
+
+      
+
+      
+
+      
+
     </div>
-    
-
-    <!-- Fields Added -->
-    
-
-    <!-- Fields Removed -->
-    
 
   </div>
+
+
+
+  <!-- ── Content ───────────────────────────────────────────── -->
+
+  <div class="content">
+
+
+
+    <!-- ════ OVERVIEW ════ -->
+
+    <div id="section-overview" class="section active">
+
+      <div class="sec-title">📊 Summary <span class="badge">9 total changes</span></div>
+
+      
+
+      <div style="margin-bottom:0.6rem;font-size:0.72rem;color:var(--psiog-muted);font-family:var(--mono);">
+
+        OLD: <span style="color:var(--psiog-sub);">powerBi\v3</span> &nbsp;→&nbsp;
+
+        NEW: <span style="color:var(--psiog-sub);">powerBi\v4</span>
+
+      </div>
+
+      <div class="sum-grid">
+
+        <div class="sum-card">
+
+          <div class="panel-title">SemanticModel</div>
+
+          <table style="table-layout:auto;">
+
+            <tr><td style="white-space:nowrap;max-width:none;">Tables Added</td><td style="max-width:60px;"><span class="tag add">1</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Tables Removed</td><td style="max-width:60px;"><span class="tag rem">4</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Columns Added</td><td style="max-width:60px;"><span class="tag add">0</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Columns Removed</td><td style="max-width:60px;"><span class="tag rem">0</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Columns Modified</td><td style="max-width:60px;"><span class="tag mod">0</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Measures Changed</td><td style="max-width:60px;"><span class="tag mod">0</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Partitions Changed</td><td style="max-width:60px;"><span class="tag mod">0</span></td></tr>
+
+          </table>
+
+        </div>
+
+        <div class="sum-card">
+
+          <div class="panel-title">Report</div>
+
+          <table style="table-layout:auto;">
+
+            <tr><td style="white-space:nowrap;max-width:none;">Pages Added</td><td style="max-width:60px;"><span class="tag add">0</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Pages Removed</td><td style="max-width:60px;"><span class="tag rem">0</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Pages Changed</td><td style="max-width:60px;"><span class="tag mod">1</span></td></tr>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- ════ TABLES ════ -->
+
+    <div id="section-tables" class="section">
+
+      <div class="sec-title">🗄️ Tables</div>
+
+      
+
+      <div class="panel">
+
+        <div class="panel-title">Added (1)</div>
+
+        
+
+        
+
+        <div class="tbl-card">
+
+          <div class="tbl-card-head">
+
+            
+
+              <span class="tbl-nm">Product Detail</span>
+
+            
+
+            <span class="tag add">+ Added</span>
+
+          </div>
+
+          
+
+          <div style="margin-bottom:0.55rem;">
+
+            <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--psiog-muted);margin-bottom:.25rem;">Columns (10)</div>
+
+            <span class="tag inf">Product Key</span><span class="tag inf">ProductSubcategoryKey</span><span class="tag inf">ProductSKU</span><span class="tag inf">ProductName</span><span class="tag inf">Product Code</span><span class="tag inf">ProductDescription</span><span class="tag inf">Product Units</span><span class="tag inf">Product Style</span><span class="tag inf">ProductCost</span><span class="tag inf">ProductPrice</span>
+
+          </div>
+
+          
+
+          
+
+          <div style="margin-bottom:0.55rem;">
+
+            <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--psiog-muted);margin-bottom:.25rem;">Source / Partitions</div>
+
+            
+
+            <div style="margin-bottom:.45rem;">
+
+              <span class="tag inf">Product Detail</span> <span style="font-size:.65rem;color:var(--psiog-muted);">unknown</span>
+
+              
+
+            </div>
+
+            
+
+          </div>
+
+          
+
+          
+
+        </div>
+
+        
+
+      </div>
+
+      
+
+      
+
+      <div class="panel">
+
+        <div class="panel-title">Removed (4)</div>
+
+        
+
+        <div class="tbl-card rem">
+
+          <div class="tbl-card-head">
+
+            <span class="tbl-nm" style="color:var(--psiog-red);">LocalDateTable_370c322f-a9fe-49ca-9c41-7f796dcf9369</span>
+
+            <span class="tag rem">- Removed</span>
+
+          </div>
+
+          <div><span class="tag rem">Date</span><span class="tag rem">Year = YEAR([Date])</span><span class="tag rem">MonthNo = MONTH([Date])</span><span class="tag rem">Month = FORMAT([Date], "MMMM")</span><span class="tag rem">QuarterNo = INT(([MonthNo] + 2) / 3)</span><span class="tag rem">Quarter = "Qtr " & [QuarterNo]</span><span class="tag rem">Day = DAY([Date])</span></div>
+
+        </div>
+
+        
+
+        <div class="tbl-card rem">
+
+          <div class="tbl-card-head">
+
+            <span class="tbl-nm" style="color:var(--psiog-red);">LocalDateTable_53a5f2dc-55d7-429e-b6a8-356c169d4812</span>
+
+            <span class="tag rem">- Removed</span>
+
+          </div>
+
+          <div><span class="tag rem">Date</span><span class="tag rem">Year = YEAR([Date])</span><span class="tag rem">MonthNo = MONTH([Date])</span><span class="tag rem">Month = FORMAT([Date], "MMMM")</span><span class="tag rem">QuarterNo = INT(([MonthNo] + 2) / 3)</span><span class="tag rem">Quarter = "Qtr " & [QuarterNo]</span><span class="tag rem">Day = DAY([Date])</span></div>
+
+        </div>
+
+        
+
+        <div class="tbl-card rem">
+
+          <div class="tbl-card-head">
+
+            <span class="tbl-nm" style="color:var(--psiog-red);">LocalDateTable_8b371d35-fee7-4c0c-88e3-6e669f04fb7f</span>
+
+            <span class="tag rem">- Removed</span>
+
+          </div>
+
+          <div><span class="tag rem">Date</span><span class="tag rem">Year = YEAR([Date])</span><span class="tag rem">MonthNo = MONTH([Date])</span><span class="tag rem">Month = FORMAT([Date], "MMMM")</span><span class="tag rem">QuarterNo = INT(([MonthNo] + 2) / 3)</span><span class="tag rem">Quarter = "Qtr " & [QuarterNo]</span><span class="tag rem">Day = DAY([Date])</span></div>
+
+        </div>
+
+        
+
+        <div class="tbl-card rem">
+
+          <div class="tbl-card-head">
+
+            <span class="tbl-nm" style="color:var(--psiog-red);">PowerBI-Datasets-main</span>
+
+            <span class="tag rem">- Removed</span>
+
+          </div>
+
+          <div><span class="tag rem">Name</span><span class="tag rem">Extension</span><span class="tag rem">Date accessed</span><span class="tag rem">Date modified</span><span class="tag rem">Date created</span><span class="tag rem">Folder Path</span><span class="tag rem">Column</span></div>
+
+        </div>
+
+        
+
+      </div>
+
+      
+
+      
+
+    </div>
+
+
+
+    <!-- ════ COLUMNS ════ -->
+
+    <div id="section-columns" class="section">
+
+      <div class="sec-title">🔢 Columns</div>
+
+      <div class="empty">No column changes.</div>
+
+    </div>
+
+
+
+    <!-- ════ MEASURES ════ -->
+
+    <div id="section-measures" class="section">
+
+      <div class="sec-title">📐 Measures / DAX</div>
+
+      <div class="empty">No measure changes.</div>
+
+    </div>
+
+
+
+    <!-- ════ PARTITIONS ════ -->
+
+    <div id="section-partitions" class="section">
+
+      <div class="sec-title">⚙️ Partitions / Source Queries</div>
+
+      <div class="empty">No partition or query changes.</div>
+
+    </div>
+
+
+
+    <!-- ════ RELATIONSHIPS ════ -->
+
+    <div id="section-relationships" class="section">
+
+      <div class="sec-title">🔗 Relationships</div>
+
+      
+
+      
+
+        
+
+        <div class="panel"><div class="panel-title">Removed</div><div style="font-family:var(--mono);font-size:.75rem;margin-bottom:.3rem;"><span class="tag rem">-</span> <span class="tooltip-cell" title="{'id': '15af7002-9a9c-4fda-a478-47cfb33a1431'}" style="display:inline;">{'id': '15af7002-9a9c-4fda-a478-47cfb33a1431'}</span></div><div style="font-family:var(--mono);font-size:.75rem;margin-bottom:.3rem;"><span class="tag rem">-</span> <span class="tooltip-cell" title="{'id': 'cd03113d-35fd-4ccf-9c11-746a9ed10d63'}" style="display:inline;">{'id': 'cd03113d-35fd-4ccf-9c11-746a9ed10d63'}</span></div><div style="font-family:var(--mono);font-size:.75rem;margin-bottom:.3rem;"><span class="tag rem">-</span> <span class="tooltip-cell" title="{'id': '433f336c-aa6f-444a-b21c-4ee6d3cf4747'}" style="display:inline;">{'id': '433f336c-aa6f-444a-b21c-4ee6d3cf4747'}</span></div><div style="font-family:var(--mono);font-size:.75rem;margin-bottom:.3rem;"><span class="tag rem">-</span> <span class="tooltip-cell" title="{'id': 'bfb3fc22-55a0-9ad0-864e-d561b57e45d4'}" style="display:inline;">{'id': 'bfb3fc22-55a0-9ad0-864e-d561b57e45d4'}</span></div></div>
+
+      
+
+    </div>
+
+
+
+    <!-- ════ ROLES ════ -->
+
+    <div id="section-roles" class="section">
+
+      <div class="sec-title">🔒 Roles — RLS / OLS</div>
+
+      
+
+      <div class="empty">No role changes.</div>
+
+    </div>
+
+
+
+    <!-- ════ PAGES CHANGED ════ -->
+
+    
+
+    <div id="section-rp-0" class="section">
+
+      <div class="sec-title">📄 Page 1 <span class="tag mod">Changed</span>
+
+        <span class="badge">2 visual(s)</span>
+
+      </div>
+
+      
+
+      
+
+      <div class="panel">
+
+        <div class="panel-title">Visual Changes</div>
+
+        
+
+        <div class="vis-card add">
+
+          <div class="vis-head">
+
+            <span class="tag add">added</span>
+
+            <span style="font-family:var(--mono);font-size:.78rem;color:var(--psiog-cyan);">tableEx</span>
+
+            <span style="font-size:.65rem;color:var(--psiog-muted);overflow:hidden;text-overflow:ellipsis;max-width:200px;" title="79fd993ca34ce06828c4">79fd993ca34ce06828c4</span>
+
+          </div>
+
+          
+
+          <div style="margin-bottom:.5rem;">
+
+            <div style="font-size:.58rem;text-transform:uppercase;color:var(--psiog-muted);margin-bottom:.2rem;">Fields</div>
+
+            <span class="tag inf" title="Product Detail.Product Code">Product Detail.Product Code</span><span class="tag inf" title="Product Detail.Product Style">Product Detail.Product Style</span><span class="tag inf" title="Sum(Product Detail.ProductCost)">Sum(Product Detail.ProductCost)</span><span class="tag inf" title="Sum(Product Detail.ProductPrice)">Sum(Product Detail.ProductPrice)</span>
+
+          </div>
+
+          
+
+          
+
+          
+
+        </div>
+
+        
+
+        <div class="vis-card add">
+
+          <div class="vis-head">
+
+            <span class="tag add">added</span>
+
+            <span style="font-family:var(--mono);font-size:.78rem;color:var(--psiog-cyan);">pieChart</span>
+
+            <span style="font-size:.65rem;color:var(--psiog-muted);overflow:hidden;text-overflow:ellipsis;max-width:200px;" title="83a29ad0eb9c2b78de89">83a29ad0eb9c2b78de89</span>
+
+          </div>
+
+          
+
+          <div style="margin-bottom:.5rem;">
+
+            <div style="font-size:.58rem;text-transform:uppercase;color:var(--psiog-muted);margin-bottom:.2rem;">Fields</div>
+
+            <span class="tag inf" title="Product Detail.Product Style">Product Detail.Product Style</span><span class="tag inf" title="Sum(Product Detail.ProductCost)">Sum(Product Detail.ProductCost)</span>
+
+          </div>
+
+          
+
+          
+
+          
+
+        </div>
+
+        
+
+      </div>
+
+      
+
+      
+
+    </div>
+
+    
+
+
+
+    <!-- ════ PAGES ADDED ════ -->
+
+    
+
+
+
+    <!-- ════ PAGES REMOVED ════ -->
+
+    
+
+
+
+    <!-- ════ AI SUMMARY ════ -->
+
+    
+
+    <div id="section-ai" class="section">
+
+      <div class="sec-title">🤖 AI Analysis</div>
+
+      <div class="ai-exec">The Power BI report has undergone significant changes with the addition of a new table, removal of multiple tables, and changes to relationships. The new table 'Product Detail' has been added with various columns. The removal of tables and relationships may impact existing visuals and measures.</div>
+
+      
+
+      <div class="panel">
+
+        <div class="panel-title">Differences Breakdown</div>
+
+        <table>
+
+          <colgroup>
+
+            <col style="width:14%"><col style="width:30%"><col style="width:20%"><col style="width:20%"><col style="width:10%">
+
+          </colgroup>
+
+          <thead><tr><th>Category</th><th>What Changed</th><th>Old</th><th>New</th><th>Impact</th></tr></thead>
+
+          <tbody>
+
+            
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="Table Added">Table Added</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">Table 'Product Detail' has been added</td>
+
+              <td><span class="tag rem" title="N/A">N/A</span></td>
+
+              <td><span class="tag add" title="Product Detail table with columns: Product Key, ProductSubcategoryKey, ProductSKU, ProductName, Product Code, ProductDescription, Product Units, Product Style, ProductCost, ProductPrice">Product Detail table...</span></td>
+
+              <td><span class="tag hi">High</span></td>
+
+            </tr>
+
+            
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="Table Removed">Table Removed</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">Table 'LocalDateTable_370c322f-a9fe-49ca-9c41-7f796dcf9369' has been removed</td>
+
+              <td><span class="tag rem" title="LocalDateTable_370c322f-a9fe-49ca-9c41-7f796dcf9369 table with columns: Date, Year, MonthNo, Month, QuarterNo, Quarter, Day">LocalDateTable_370c322f-a...</span></td>
+
+              <td><span class="tag add" title="N/A">N/A</span></td>
+
+              <td><span class="tag med">Medium</span></td>
+
+            </tr>
+
+            
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="Table Removed">Table Removed</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">Table 'LocalDateTable_53a5f2dc-55d7-429e-b6a8-356c169d4812' has been removed</td>
+
+              <td><span class="tag rem" title="LocalDateTable_53a5f2dc-55d7-429e-b6a8-356c169d4812 table with columns: Date, Year, MonthNo, Month, QuarterNo, Quarter, Day">LocalDateTable_53a5f2dc-5...</span></td>
+
+              <td><span class="tag add" title="N/A">N/A</span></td>
+
+              <td><span class="tag med">Medium</span></td>
+
+            </tr>
+
+            
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="Table Removed">Table Removed</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">Table 'LocalDateTable_8b371d35-fee7-4c0c-88e3-6e669f04fb7f' has been removed</td>
+
+              <td><span class="tag rem" title="LocalDateTable_8b371d35-fee7-4c0c-88e3-6e669f04fb7f table with columns: Date, Year, MonthNo, Month, QuarterNo, Quarter, Day">LocalDateTable_8b371d35-f...</span></td>
+
+              <td><span class="tag add" title="N/A">N/A</span></td>
+
+              <td><span class="tag med">Medium</span></td>
+
+            </tr>
+
+            
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="Table Removed">Table Removed</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">Table 'PowerBI-Datasets-main' has been removed</td>
+
+              <td><span class="tag rem" title="PowerBI-Datasets-main table with columns: Name, Extension, Date accessed, Date modified, Date created, Folder Path, Column">PowerBI-Datasets-main...</span></td>
+
+              <td><span class="tag add" title="N/A">N/A</span></td>
+
+              <td><span class="tag lo">Low</span></td>
+
+            </tr>
+
+            
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="Relationship Removed">Relationship Removed</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">4 relationships have been removed</td>
+
+              <td><span class="tag rem" title="4 existing relationships">4 existing relationships</span></td>
+
+              <td><span class="tag add" title="N/A">N/A</span></td>
+
+              <td><span class="tag hi">High</span></td>
+
+            </tr>
+
+            
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      
+
+      <div class="panel">
+
+        <div class="panel-title">Enhancements & Insights</div>
+
+        
+
+        <div class="enh-card">
+
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+
+            <strong style="font-size:.82rem;">Improved Product Detail</strong>
+
+            <span class="tag add">Improvement</span>
+
+          </div>
+
+          <p style="font-size:.78rem;color:var(--psiog-sub);line-height:1.65;">The addition of the 'Product Detail' table provides more detailed information about products, allowing for more accurate analysis and reporting. This change enables better insights into product performance and customer behavior.</p>
+
+        </div>
+
+      </div>
+
+      
+
+      <div class="panel">
+
+        <div class="panel-title">⚠️ Risk Flags</div>
+
+        
+
+        <div class="risk-card">
+
+          <strong style="color:var(--psiog-red);font-size:.8rem;">Broken References</strong>
+
+          <p style="font-size:.76rem;color:var(--psiog-sub);margin-top:.18rem;">The removal of tables 'LocalDateTable_370c322f-a9fe-49ca-9c41-7f796dcf9369', 'LocalDateTable_53a5f2dc-55d7-429e-b6a8-356c169d4812', 'LocalDateTable_8b371d35-fee7-4c0c-88e3-6e669f04fb7f', and 'PowerBI-Datasets-main' may cause broken references in existing measures and visuals. Additionally, the removal of 4 relationships may lead to missing joins or incorrect data.</p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+  </div><!-- /content -->
+
+</div><!-- /shell -->
+
+
+
+<!-- ── Bottom Navbar ─────────────────────────────────────────── -->
+
+<div class="bottom-nav">
+
+  <div class="btab active" onclick="goto('overview',null);activateTab(this)">📊 Overview</div>
+
   
+
+  <div class="btab chg" id="rt-0" onclick="goto('rp-0',null);activateTab(this);switchTab('report')">Page 1</div>
+
   
+
+  
+
+  
+
+  
+
+  <div class="btab" onclick="goto('ai',null);activateTab(this)">🤖 AI</div>
+
+  
+
 </div>
 
-  <!-- Filters -->
-  <div class="panel">
-    <h3>Filters & Slicers</h3>
-    
-    <table>
-      <thead><tr><th>Page</th><th>Type</th></tr></thead>
-      <tbody>
-        
-        <tr><td>Page 1</td><td><span class="tag modified">Filter Changed</span></td></tr>
-        
-        
-      </tbody>
-    </table>
-    
-  </div>
-  <!-- Fields Changed -->
-
-<div class="panel">
-  <h3>Field / Column Swaps</h3>
-  <table>
-    <thead><tr><th>Page</th><th>Visual ID</th><th>Removed</th><th>Added</th></tr></thead>
-    <tbody>
-      
-      <tr>
-        <td>Page 1</td>
-        <td style="font-size:0.75rem; color:#aaa;">8bfdbd317dd58e392a95</td>
-        <td><span class="tag removed">Customers1.CustomerID</span></td>
-        <td><span class="tag added">Customers1.FirstName</span></td>
-      </tr>
-      
-    </tbody>
-  </table>
-</div>
-
-  
 
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!--  LAYOUT SECTION                                        -->
-  <!-- ══════════════════════════════════════════════════════ -->
-  
-  <h2>🎨 Layout Changes</h2>
+<script>
 
-  <div class="panel">
-    <h3>Canvas Settings</h3>
-    
-      <p style="color:#aaa; font-size:0.85rem;">No canvas changes.</p>
-    
-  </div>
+  function goto(id, navEl) {
 
-  <div class="panel">
-    <h3>Bookmarks</h3>
-    
-    
-      <p style="color:#aaa; font-size:0.85rem;">No bookmark changes.</p>
-    
-  </div>
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
 
-  <div class="panel">
-    <h3>Z-Order</h3>
-    
-      <p style="color:#aaa; font-size:0.85rem;">No z-order changes.</p>
-    
-  </div>
-  
+    const t = document.getElementById('section-' + id);
 
-  <!-- ── Footer ─────────────────────────────────────────── -->
-  <div class="footer">
-    Power BI Diff Tool — Generated 2026-05-29 10:34:46 | local environment
-  </div>
+    if (t) t.classList.add('active');
+
+    if (navEl) {
+
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+      navEl.classList.add('active');
+
+    }
+
+  }
+
+  function activateTab(el) {
+
+    document.querySelectorAll('.btab').forEach(t => t.classList.remove('active'));
+
+    if (el && el.classList) el.classList.add('active');
+
+  }
+
+  function switchTab(tab) {
+
+    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+
+    document.getElementById('stab-' + tab).classList.add('active');
+
+    document.getElementById('nav-model').style.display  = tab==='model'  ? 'block' : 'none';
+
+    document.getElementById('nav-report').style.display = tab==='report' ? 'block' : 'none';
+
+  }
+
+</script>
 
 </body>
+
 </html>

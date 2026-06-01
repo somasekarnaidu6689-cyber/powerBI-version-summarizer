@@ -13,9 +13,13 @@ def compare_layout(old_path: Path, new_path: Path) -> dict:
     # If given a folder (extracted pbix), point to report.json inside it
     def resolve_report_json(p: Path) -> Path:
         if p.is_dir():
-            candidate = p / "Report" / "definition" / "report.json"
-            if candidate.exists():
-                return candidate
+            candidates = [
+                p / "definition" / "report.json",            # .pbip Report folder
+                p / "Report" / "definition" / "report.json", # extracted .pbix
+            ]
+            for c in candidates:
+                if c.exists():
+                    return c
             raise FileNotFoundError(f"[layout] report.json not found in: {p}")
         return p
 
@@ -39,7 +43,7 @@ def compare_layout(old_path: Path, new_path: Path) -> dict:
     _print_summary(results)
     return results
 
-    
+
 # ─── Canvas Settings ──────────────────────────────────────────
 def _get_canvas_settings(report: dict) -> dict:
     """

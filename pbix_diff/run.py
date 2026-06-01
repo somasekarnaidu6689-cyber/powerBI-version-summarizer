@@ -1,6 +1,8 @@
 import argparse
 import time
 from pathlib import Path
+from ai_summarizer import generate_ai_summary
+from exporter import export_pdf, export_excel
 
 from detector import detect, describe
 from extractor import extract, cleanup
@@ -34,6 +36,8 @@ def parse_args():
         default=str(config.OUTPUT_HTML),
         help=f"Output path for the HTML report (default: {config.OUTPUT_HTML})"
     )
+    parser.add_argument("--no-pdf",   action="store_true", help="Skip PDF export")
+    parser.add_argument("--no-excel", action="store_true", help="Skip Excel export")
     return parser.parse_args()
 
 
@@ -51,11 +55,11 @@ def main():
 
     # ── Validate Paths ────────────────────────────────────────
     if not old_path.exists():
-        print(f"\n❌ ERROR: Old path does not exist:\n   {old_path}")
+        print(f"\nERROR: Old path does not exist:\n   {old_path}")
         return
 
     if not new_path.exists():
-        print(f"\n❌ ERROR: New path does not exist:\n   {new_path}")
+        print(f"\nERROR: New path does not exist:\n   {new_path}")
         return
 
     # ── Detect Format ─────────────────────────────────────────
@@ -64,7 +68,7 @@ def main():
         old_fmt, old_ftype = detect(old_path)
         new_fmt, new_ftype = detect(new_path)
     except (ValueError, FileNotFoundError) as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\nERROR: {e}")
         return
 
     print(f"[run] Old → {describe(old_fmt, old_ftype)}")
@@ -76,7 +80,7 @@ def main():
         old_extracted = extract(old_path, old_fmt, old_ftype)
         new_extracted = extract(new_path, new_fmt, new_ftype)
     except Exception as e:
-        print(f"\n❌ ERROR during extraction: {e}")
+        print(f"\n ERROR during extraction: {e}")
         return
 
     old_model  = old_extracted.get("model_path")
@@ -134,6 +138,16 @@ def main():
     # ── Generate Report ───────────────────────────────────────
     print(f"\n[run] Generating report ...")
     try:
+        # ── AI Summary ────────────────────────────────────────────────
+        ai_summary = {}
+        if config.ENABLE_AI_SUMMARY and config.GROQ_API_KEY:
+            from ai_summarizer import generate_ai_summary
+            ai_summary = generate_ai_summary(
+                model_results=model_results,
+                report_results=report_results,
+                layout_results=layout_results,
+                api_key=config.GROQ_API_KEY
+            )
         generate_report(
             model_results=model_results,
             report_results=report_results,
@@ -141,11 +155,42 @@ def main():
             old_path=old_path,
             new_path=new_path,
             fmt=str(old_fmt.value),
-            duration_seconds=duration
+            duration_seconds=duration,
+            ai_summary=ai_summary        # ← add this
         )
     except Exception as e:
         print(f"\n❌ ERROR generating report: {e}")
         return
+
+    # ── Export PDF ────────────────────────────────────────────────
+    if not args.no_pdf:
+        pdf_path = config.OUTPUT_PATH / "diff_report.pdf"
+        try:
+            export_pdf(
+                model_results=model_results,
+                report_results=report_results,
+                layout_results=layout_results,
+                ai_summary=ai_summary,
+                old_path=str(old_path),
+                new_path=str(new_path),
+                output_path=pdf_path
+            )
+        except Exception as e:
+            print(f"[run] ⚠️ PDF export failed: {e}")
+
+    # ── Export Excel ──────────────────────────────────────────────
+    if not args.no_excel:
+        excel_path = config.OUTPUT_PATH / "diff_report.xlsx"
+        try:
+            export_excel(
+                model_results=model_results,
+                report_results=report_results,
+                old_path=str(old_path),
+                new_path=str(new_path),
+                output_path=excel_path
+            )
+        except Exception as e:
+            print(f"[run] ⚠️ Excel export failed: {e}")
 
     # ── Cleanup Temp Folders ──────────────────────────────────
     if old_ftype.name == "BINARY_ZIP":

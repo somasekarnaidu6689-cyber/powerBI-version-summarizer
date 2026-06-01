@@ -1,470 +1,1717 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
+
+  <meta charset="UTF-8"/>
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Power BI Diff Report</title>
+
+  <title>Power BI Diff Report — Psiog Digital</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+
   <style>
-    /* ── Reset & Base ───────────────────────────────────── */
+
+    /* ── Brand Palette ───────────────────────────────────── */
+
+    :root {
+
+      --brand-primary: #2CB7BE;
+
+      --brand-accent:  #C9D91A;
+
+      --bg:           #FFFFFF;
+
+      --bg-soft:      #F7FCFB;
+
+      --panel:        #FFFFFF;
+
+      --panel-alt:    #F4F9F8;
+
+      --border:       #D8E8E7;
+
+      --text:         #102A33;
+
+      --muted:        #5D6D71;
+
+      --sub:          #6C7A80;
+
+      --shadow:       0 20px 60px rgba(44, 183, 190, 0.08);
+
+      --mono:          'JetBrains Mono', monospace;
+
+      --sans:          'Avenir Next Rounded', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+      /* Legacy theme aliases for older selectors */
+      --psiog-navy:   #F7FCFB;
+      --psiog-card:   #FFFFFF;
+      --psiog-card2:  #F4F9F8;
+      --psiog-border: rgba(36, 103, 107, 0.16);
+      --psiog-text:   #102A33;
+      --psiog-muted:  #5D6D71;
+      --psiog-sub:    #6C7A80;
+      --psiog-blue:   #2CB7BE;
+      --psiog-green:  #2F855A;
+      --psiog-red:    #DC2626;
+      --psiog-amber:  #C9D91A;
+      --psiog-purple: #6D28D9;
+      --psiog-cyan:   #2CB7BE;
+      --psiog-dark:   #F1F8F8;
+
+    }
+
+
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f6f9;
-      color: #1a1a2e;
-      padding: 2rem;
+    html, body { height: 100%; font-family: var(--sans); }
+
+    body { background: var(--bg); color: var(--text); }
+
+
+
+    /* ── Topbar ──────────────────────────────────────────── */
+
+    .topbar {
+
+      background: rgba(255,255,255,0.94);
+
+      border-bottom: 1px solid var(--border);
+
+      padding: 0.8rem 1.8rem;
+
+      display: flex; align-items: center; gap: 1.2rem;
+
+      position: sticky; top: 0; z-index: 300;
+
+      backdrop-filter: blur(12px);
+
+      box-shadow: 0 10px 35px rgba(43, 181, 190, 0.08);
+
     }
 
-    h1 { font-size: 1.8rem; color: #0f3460; margin-bottom: 0.3rem; }
-    h2 { font-size: 1.2rem; color: #16213e; margin: 1.5rem 0 0.8rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.4rem; }
-    h3 { font-size: 1rem; color: #0f3460; margin: 1rem 0 0.4rem; }
+    .logo-area { display: flex; align-items: center; gap: 0.8rem; }
 
-    /* ── Header ─────────────────────────────────────────── */
-    .header {
-      background: #0f3460;
-      color: white;
-      padding: 1.5rem 2rem;
-      border-radius: 10px;
-      margin-bottom: 1.5rem;
-    }
-    .header p { font-size: 0.85rem; opacity: 0.85; margin-top: 0.3rem; }
-    .header .meta { display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap; }
-    .header .meta span { background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; }
+    .logo-img { height: 32px; object-fit: contain; }
 
-    /* ── Warning Banner ──────────────────────────────────── */
-    .warning {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 0.8rem 1.2rem;
-      border-radius: 6px;
-      margin-bottom: 1.2rem;
-      font-size: 0.9rem;
+    .logo-divider { width: 1px; height: 28px; background: var(--psiog-border); }
+
+    .logo-label {
+
+      font-family: var(--mono); font-size: 0.72rem;
+
+      color: var(--psiog-cyan); letter-spacing: 0.04em;
+
     }
 
-    /* ── Summary Cards ───────────────────────────────────── */
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem 1.2rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
-      text-align: center;
-    }
-    .card .count { font-size: 2rem; font-weight: 700; color: #0f3460; }
-    .card .label { font-size: 0.78rem; color: #666; margin-top: 0.2rem; }
-    .card.green .count { color: #2e7d32; }
-    .card.red   .count { color: #c62828; }
-    .card.amber .count { color: #e65100; }
+    .topbar-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-left: auto; }
 
-    /* ── No Changes ──────────────────────────────────────── */
-    .no-changes {
-      background: #e8f5e9;
-      border-left: 4px solid #43a047;
-      padding: 1rem 1.5rem;
-      border-radius: 6px;
-      font-weight: 600;
-      color: #2e7d32;
-      margin-bottom: 1.5rem;
+    .chip {
+
+      font-size: 0.65rem; font-family: var(--mono);
+
+      background: rgba(14,165,233,0.07); border: 1px solid rgba(14,165,233,0.18);
+
+      color: var(--psiog-sub); padding: 0.2rem 0.55rem; border-radius: 3px;
+
     }
 
-    /* ── Section Panels ──────────────────────────────────── */
+    .chip b { color: var(--psiog-cyan); }
+
+    .dl-btn {
+
+      display: inline-flex; align-items: center; gap: 0.35rem;
+
+      padding: 0.35rem 0.85rem; border-radius: 4px; font-size: 0.72rem;
+
+      font-family: var(--mono); text-decoration: none; cursor: pointer;
+
+      transition: all 0.15s; white-space: nowrap; border: 1px solid;
+
+    }
+
+    .dl-pdf  { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.3);  color: #FCA5A5; }
+
+    .dl-xl   { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #6EE7B7; }
+
+    .dl-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+
+
+    /* ── Stat Row ────────────────────────────────────────── */
+
+    .statrow {
+
+      display: flex; background: var(--psiog-dark);
+
+      border-bottom: 1px solid var(--psiog-border); overflow-x: auto;
+
+    }
+
+    .stat {
+
+      flex: 1; min-width: 110px; padding: 0.85rem 1rem;
+
+      text-align: center; border-right: 1px solid var(--psiog-border);
+
+      position: relative;
+
+    }
+
+    .stat::after {
+
+      content: ''; position: absolute; bottom: 0; left: 50%;
+
+      transform: translateX(-50%); width: 0; height: 2px;
+
+      background: var(--psiog-blue); transition: width 0.3s;
+
+    }
+
+    .stat:hover::after { width: 60%; }
+
+    .stat:last-child { border-right: none; }
+
+    .snum { font-family: var(--mono); font-size: 1.5rem; font-weight: 700; line-height: 1; }
+
+    .slbl { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--psiog-muted); margin-top: 0.2rem; }
+
+    .g { color: var(--psiog-green); }
+
+    .r { color: var(--psiog-red); }
+
+    .a { color: var(--psiog-amber); }
+
+    .b { color: var(--psiog-blue); }
+
+    .p { color: var(--psiog-purple); }
+
+    .c { color: var(--psiog-cyan); }
+
+
+
+    /* ── Shell ───────────────────────────────────────────── */
+
+    .shell { display: flex; height: calc(100vh - 116px); }
+
+
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+
+    .sidebar {
+
+      width: 224px; flex-shrink: 0;
+
+      background: var(--psiog-dark);
+
+      border-right: 1px solid var(--psiog-border);
+
+      display: flex; flex-direction: column; overflow: hidden;
+
+    }
+
+    .sidebar-tabs {
+
+      display: flex; border-bottom: 1px solid var(--psiog-border);
+
+      flex-shrink: 0;
+
+    }
+
+    .stab {
+
+      flex: 1; padding: 0.65rem 0.4rem; text-align: center;
+
+      font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+
+      letter-spacing: 0.07em; cursor: pointer; color: var(--psiog-muted);
+
+      border-bottom: 2px solid transparent; transition: all 0.15s;
+
+    }
+
+    .stab.active { color: var(--psiog-cyan); border-bottom-color: var(--psiog-cyan); }
+
+    .stab:hover:not(.active) { color: var(--psiog-text); }
+
+    .nav-list { flex: 1; overflow-y: auto; padding: 0.4rem 0; }
+
+    .nav-list::-webkit-scrollbar { width: 3px; }
+
+    .nav-list::-webkit-scrollbar-thumb { background: var(--psiog-border); }
+
+    .nav-grp {
+
+      font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em;
+
+      color: var(--psiog-muted); padding: 0.55rem 1rem 0.18rem;
+
+    }
+
+    .nav-item {
+
+      display: flex; align-items: center; gap: 0.5rem;
+
+      padding: 0.45rem 1rem; cursor: pointer; font-size: 0.78rem;
+
+      color: var(--psiog-sub); border-left: 2px solid transparent;
+
+      transition: all 0.12s; user-select: none;
+
+    }
+
+    .nav-item:hover { background: rgba(14,165,233,0.05); color: var(--psiog-text); }
+
+    .nav-item.active {
+
+      background: rgba(14,165,233,0.08); border-left-color: var(--psiog-blue);
+
+      color: var(--psiog-blue);
+
+    }
+
+    .ndot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+    .ndot.g { background: var(--psiog-green); }
+
+    .ndot.r { background: var(--psiog-red); }
+
+    .ndot.a { background: var(--psiog-amber); }
+
+    .ndot.b { background: var(--psiog-blue); }
+
+    .ndot.p { background: var(--psiog-purple); }
+
+    .ndot.c { background: var(--psiog-cyan); }
+
+    .ndot.m { background: var(--psiog-muted); }
+
+    .nbadge {
+
+      margin-left: auto; font-size: 0.6rem; font-family: var(--mono);
+
+      background: rgba(14,165,233,0.1); color: var(--psiog-blue);
+
+      padding: 0.06rem 0.32rem; border-radius: 3px;
+
+    }
+
+
+
+    /* ── Content ─────────────────────────────────────────── */
+
+    .content { flex: 1; overflow-y: auto; padding: 1.6rem 2rem 6rem; }
+
+    .content::-webkit-scrollbar { width: 4px; }
+
+    .content::-webkit-scrollbar-thumb { background: var(--psiog-border); border-radius: 2px; }
+
+    .section { display: none; animation: fi 0.15s ease; }
+
+    .section.active { display: block; }
+
+    @keyframes fi { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+
+
+
+    .sec-title {
+
+      font-size: 0.85rem; font-weight: 600; color: var(--psiog-cyan);
+
+      margin-bottom: 1.2rem; padding-bottom: 0.5rem;
+
+      border-bottom: 1px solid var(--psiog-border);
+
+      display: flex; align-items: center; gap: 0.5rem;
+
+      font-family: var(--mono);
+
+    }
+
+    .sec-title .badge {
+
+      margin-left: auto; font-size: 0.65rem;
+
+      background: rgba(14,165,233,0.12); border: 1px solid rgba(14,165,233,0.25);
+
+      color: var(--psiog-blue); padding: 0.1rem 0.5rem; border-radius: 3px;
+
+    }
+
+
+
+    /* ── Panel ───────────────────────────────────────────── */
+
     .panel {
-      background: white;
-      border-radius: 8px;
-      padding: 1.2rem 1.5rem;
-      margin-bottom: 1.2rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+
+      background: var(--psiog-card); border: 1px solid var(--psiog-border);
+
+      border-radius: 8px; padding: 1.1rem 1.3rem; margin-bottom: 0.8rem;
+
     }
+
+    .panel-title {
+
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em;
+
+      color: var(--psiog-muted); margin-bottom: 0.9rem; font-family: var(--mono);
+
+    }
+
+
 
     /* ── Tags ────────────────────────────────────────────── */
+
     .tag {
-      display: inline-block;
-      padding: 0.2rem 0.7rem;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin: 0.2rem;
-    }
-    .tag.added   { background: #e8f5e9; color: #2e7d32; }
-    .tag.removed { background: #ffebee; color: #c62828; }
-    .tag.modified{ background: #fff3e0; color: #e65100; }
 
-    /* ── DAX Side-by-Side ────────────────────────────────── */
-    .dax-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
-    .dax-box { border-radius: 6px; padding: 0.8rem; font-size: 0.8rem; }
-    .dax-box.old { background: #fff5f5; border: 1px solid #ffcdd2; }
-    .dax-box.new { background: #f1f8e9; border: 1px solid #c5e1a5; }
-    .dax-box pre { white-space: pre-wrap; word-break: break-word; font-family: 'Cascadia Code', 'Consolas', monospace; }
-    .dax-label { font-size: 0.72rem; font-weight: 700; margin-bottom: 0.4rem; color: #888; text-transform: uppercase; }
+      display: inline-block; padding: 0.15rem 0.55rem; border-radius: 3px;
 
-    /* ── Table ───────────────────────────────────────────── */
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
-    th { background: #f0f4f8; text-align: left; padding: 0.5rem 0.8rem; color: #444; }
-    td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #f0f0f0; }
-    tr:hover td { background: #fafafa; }
+      font-size: 0.68rem; font-weight: 600; font-family: var(--mono); margin: 0.12rem;
 
-    /* ── Footer ──────────────────────────────────────────── */
-    .footer {
-      text-align: center;
-      font-size: 0.75rem;
-      color: #aaa;
-      margin-top: 2rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+
     }
+
+    .tag.add  { background: rgba(16,185,129,0.1);  color: var(--psiog-green);  border: 1px solid rgba(16,185,129,0.25); }
+
+    .tag.rem  { background: rgba(239,68,68,0.1);   color: var(--psiog-red);    border: 1px solid rgba(239,68,68,0.25); }
+
+    .tag.mod  { background: rgba(245,158,11,0.1);  color: var(--psiog-amber);  border: 1px solid rgba(245,158,11,0.25); }
+
+    .tag.inf  { background: rgba(14,165,233,0.1);  color: var(--psiog-blue);   border: 1px solid rgba(14,165,233,0.25); }
+
+    .tag.lo   { background: rgba(16,185,129,0.12); color: var(--psiog-green); }
+
+    .tag.med  { background: rgba(245,158,11,0.12); color: var(--psiog-amber); }
+
+    .tag.hi   { background: rgba(239,68,68,0.12);  color: var(--psiog-red); }
+
+
+
+    /* ── Table — with truncation ─────────────────────────── */
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
+
+    th {
+
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+
+      color: var(--psiog-muted); padding: 0.45rem 0.7rem;
+
+      border-bottom: 1px solid var(--psiog-border); text-align: left;
+
+      background: rgba(14,165,233,0.04); font-family: var(--mono);
+
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+
+    }
+
+    td {
+
+      padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(30,45,69,0.5);
+
+      vertical-align: top; overflow: hidden; text-overflow: ellipsis;
+
+      white-space: nowrap; max-width: 0;
+
+    }
+
+    td.wrap { white-space: normal; word-break: break-word; }
+
+    td:hover { white-space: normal; word-break: break-word; max-width: none; }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(14,165,233,0.025); }
+
+    .tooltip-cell {
+
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+
+      cursor: help; display: block;
+
+    }
+
+    .tooltip-cell[title]:hover::after {
+
+      content: attr(title);
+
+      position: fixed; z-index: 999;
+
+      background: #1E2D45; color: var(--psiog-text);
+
+      border: 1px solid var(--psiog-border);
+
+      padding: 0.4rem 0.7rem; border-radius: 4px;
+
+      font-size: 0.72rem; max-width: 400px;
+
+      white-space: pre-wrap; word-break: break-all;
+
+      pointer-events: none; top: auto; left: auto;
+
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+
+    }
+
+
+
+    /* ── DAX Block ───────────────────────────────────────── */
+
+    .dax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-top: 0.4rem; }
+
+    .dax-box { border-radius: 5px; padding: 0.75rem; font-family: var(--mono); font-size: 0.7rem; }
+
+    .dax-box.old { background: rgba(239,68,68,0.05);  border: 1px solid rgba(239,68,68,0.18); }
+
+    .dax-box.new { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.18); }
+
+    .dax-box pre { white-space: pre-wrap; word-break: break-word; line-height: 1.6; color: var(--psiog-text); }
+
+    .dax-lbl { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--psiog-muted); margin-bottom: 0.3rem; }
+
+
+
+    /* ── Table Card ──────────────────────────────────────── */
+
+    .tbl-card {
+
+      border: 1px solid rgba(16,185,129,0.18); border-left: 3px solid var(--psiog-green);
+
+      border-radius: 6px; padding: 0.9rem 1.1rem; margin-bottom: 0.7rem;
+
+      background: rgba(16,185,129,0.02);
+
+    }
+
+    .tbl-card.rem { border-color: rgba(239,68,68,0.2); border-left-color: var(--psiog-red); background: rgba(239,68,68,0.02); }
+
+    .tbl-card-head { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+
+    .tbl-nm { font-family: var(--mono); font-weight: 600; font-size: 0.85rem; color: var(--psiog-green); }
+
+    .tbl-nm.auto { color: var(--psiog-muted); font-size: 0.72rem; }
+
+    .auto-lbl {
+
+      font-size: 0.58rem; color: var(--psiog-muted); background: var(--psiog-card2);
+
+      padding: 0.08rem 0.35rem; border-radius: 3px; border: 1px solid var(--psiog-border);
+
+    }
+
+
+
+    /* ── Visual Card ─────────────────────────────────────── */
+
+    .vis-card {
+
+      background: var(--psiog-card2); border: 1px solid var(--psiog-border);
+
+      border-radius: 6px; padding: 0.85rem 1rem; margin-bottom: 0.55rem;
+
+    }
+
+    .vis-card.add { border-left: 3px solid var(--psiog-green); }
+
+    .vis-card.rem { border-left: 3px solid var(--psiog-red); }
+
+    .vis-card.mod { border-left: 3px solid var(--psiog-amber); }
+
+    .vis-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; flex-wrap: wrap; }
+
+
+
+    /* ── Page Banner ─────────────────────────────────────── */
+
+    .pg-banner {
+
+      border-radius: 6px; padding: 0.8rem 1.1rem; margin-bottom: 0.8rem;
+
+      font-size: 0.82rem; border: 1px solid;
+
+    }
+
+    .pg-banner.new-pg { border-color: rgba(16,185,129,0.25); background: rgba(16,185,129,0.04); }
+
+    .pg-banner.del-pg { border-color: rgba(239,68,68,0.25);  background: rgba(239,68,68,0.04); }
+
+
+
+    /* ── AI Section ──────────────────────────────────────── */
+
+    .ai-exec {
+
+      background: linear-gradient(135deg, rgba(14,165,233,0.07), rgba(129,140,248,0.07));
+
+      border: 1px solid rgba(14,165,233,0.2); border-radius: 8px;
+
+      padding: 1.1rem 1.3rem; margin-bottom: 0.8rem;
+
+      line-height: 1.8; font-size: 0.87rem; color: var(--psiog-text);
+
+    }
+
+    .enh-card { background: var(--psiog-card2); border: 1px solid var(--psiog-border); border-radius: 6px; padding: 0.75rem 0.95rem; margin-bottom: 0.55rem; }
+
+    .risk-card { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 0.75rem 0.95rem; margin-bottom: 0.55rem; }
+
+
+
+    .empty { color: var(--psiog-muted); font-size: 0.78rem; padding: 0.8rem 0; font-style: italic; }
+
+
+
+    /* ── Summary Grid ────────────────────────────────────── */
+
+    .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; }
+
+    .sum-card {
+
+      background: var(--psiog-card); border: 1px solid var(--psiog-border);
+
+      border-radius: 8px; padding: 1rem 1.2rem;
+
+    }
+
+
+
+    /* ── Bottom Navbar ───────────────────────────────────── */
+
+    .bottom-nav {
+
+      position: fixed; bottom: 0; left: 0; right: 0;
+
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(16px);
+
+      border-top: 1px solid var(--border);
+
+      padding: 0.55rem 1.2rem; display: flex; gap: 0.4rem;
+
+      overflow-x: auto; z-index: 300; scrollbar-width: none;
+
+      box-shadow: 0 -12px 28px rgba(44, 183, 190, 0.08);
+
+    }
+
+    .bottom-nav::-webkit-scrollbar { display: none; }
+
+    .btab {
+
+      flex-shrink: 0; padding: 0.35rem 0.9rem; border-radius: 4px;
+
+      font-size: 0.72rem; font-family: var(--mono); cursor: pointer;
+
+      border: 1px solid var(--psiog-border); color: var(--psiog-muted);
+
+      background: var(--psiog-card); transition: all 0.12s; white-space: nowrap;
+
+    }
+
+    .btab:hover { border-color: var(--psiog-blue); color: var(--psiog-blue); }
+
+    .btab.active { background: var(--psiog-blue); border-color: var(--psiog-blue); color: #fff; font-weight: 600; }
+
+    .btab.new-t { border-color: rgba(16,185,129,0.3); color: var(--psiog-green); }
+
+    .btab.del-t { border-color: rgba(239,68,68,0.3);  color: var(--psiog-red); }
+
+    .btab.new-t.active, .btab.del-t.active { background: var(--psiog-blue); color: #fff; }
+
+    .btab.chg::after { content: '●'; margin-left: 0.3rem; font-size: 0.45rem; color: var(--psiog-amber); vertical-align: middle; }
+
+    .btab.active.chg::after { color: rgba(255,255,255,0.6); }
+
+
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+
+    ::-webkit-scrollbar-track { background: var(--psiog-navy); }
+
+    ::-webkit-scrollbar-thumb { background: var(--psiog-border); border-radius: 2px; }
+
   </style>
+
 </head>
+
 <body>
 
-  <!-- ── Header ─────────────────────────────────────────── -->
-  <div class="header">
-    <h1>⚡ Power BI Version Comparison Report</h1>
-    <p>Generated at {{ generated_at }} | Environment: {{ environment }} | Format: {{ format }}</p>
-    <div class="meta">
-      <span>📂 Old: {{ old_path }}</span>
-      <span>📂 New: {{ new_path }}</span>
-      <span>⏱ Duration: {{ duration }}</span>
+
+
+<!-- ── Topbar ───────────────────────────────────────────────── -->
+
+<div class="topbar">
+
+  <div class="logo-area">
+
+    <img src="assets/logo.png" alt="Psiog Digital" class="logo-img"
+
+         onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='flex'"/>
+
+    <div class="logo-fallback" style="display:none; align-items:center; gap:0.4rem;">
+
+      <div style="width:28px;height:28px;background:linear-gradient(135deg,#0EA5E9,#818CF8);border-radius:5px;
+
+                  display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;">P</div>
+
+      <span style="font-family:var(--mono);font-size:0.82rem;font-weight:600;color:var(--psiog-text);">PSIOG</span>
+
     </div>
+
+    <div class="logo-divider"></div>
+
+    <span class="logo-label">Power BI Diff Report</span>
+
   </div>
 
-  <!-- ── Databricks Warning ──────────────────────────────── -->
-  {% if dbx_warning %}
-  <div class="warning">{{ dbx_warning }}</div>
-  {% endif %}
+  <div class="topbar-chips">
 
-  <!-- ── No Changes ─────────────────────────────────────── -->
-  {% if total_changes == 0 %}
-  <div class="no-changes">✅ No changes detected between the two versions.</div>
-  {% endif %}
+    <div class="chip">Generated <b>{{ generated_at }}</b></div>
 
-  <!-- ── Summary Cards ──────────────────────────────────── -->
-  <div class="summary-grid">
-    <div class="card green">
-      <div class="count">{{ model.tables_added | length }}</div>
-      <div class="label">Tables Added</div>
-    </div>
-    <div class="card red">
-      <div class="count">{{ model.tables_removed | length }}</div>
-      <div class="label">Tables Removed</div>
-    </div>
-    <div class="card amber">
-      <div class="count">{{ model.measures_modified | length }}</div>
-      <div class="label">Measures Changed</div>
-    </div>
-    <div class="card green">
-      <div class="count">{{ report.pages_added | length }}</div>
-      <div class="label">Pages Added</div>
-    </div>
-    <div class="card red">
-      <div class="count">{{ report.pages_removed | length }}</div>
-      <div class="label">Pages Removed</div>
-    </div>
-    <div class="card amber">
-      <div class="count">{{ report.visuals_modified | length }}</div>
-      <div class="label">Visuals Modified</div>
-    </div>
+    <div class="chip">Env <b>{{ environment }}</b></div>
+
+    <div class="chip">Format <b>{{ format }}</b></div>
+
+    <div class="chip">⏱ <b>{{ duration }}</b></div>
+
   </div>
 
+  <div style="display:flex;gap:0.4rem;margin-left:0.5rem;flex-shrink:0;">
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!--  DATA MODEL SECTION                                    -->
-  <!-- ══════════════════════════════════════════════════════ -->
-  {% if model %}
-  <h2>📊 Data Model Changes</h2>
+    <a href="diff_report.pdf"  download class="dl-btn dl-pdf">⬇ PDF</a>
 
-  <!-- Tables -->
-  <div class="panel">
-    <h3>Tables</h3>
-    {% if model.tables_added %}
-      {% for t in model.tables_added %}
-        <span class="tag added">+ {{ t }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if model.tables_removed %}
-      {% for t in model.tables_removed %}
-        <span class="tag removed">- {{ t }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if not model.tables_added and not model.tables_removed %}
-      <p style="color:#aaa; font-size:0.85rem;">No table changes.</p>
-    {% endif %}
+    <a href="diff_report.xlsx" download class="dl-btn dl-xl">⬇ Excel</a>
+
   </div>
 
-  <!-- Columns -->
-  <div class="panel">
-    <h3>Columns</h3>
-    {% if model.columns_added or model.columns_removed %}
-    <table>
-      <thead><tr><th>Table</th><th>Column</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for c in model.columns_added %}
-        <tr><td>{{ c.table }}</td><td>{{ c.column }}</td><td><span class="tag added">Added</span></td></tr>
-        {% endfor %}
-        {% for c in model.columns_removed %}
-        <tr><td>{{ c.table }}</td><td>{{ c.column }}</td><td><span class="tag removed">Removed</span></td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No column changes.</p>
-    {% endif %}
-  </div>
+</div>
 
-  <!-- Measures (DAX side-by-side) -->
-  <div class="panel">
-    <h3>Measures</h3>
-    {% if model.measures_modified %}
-      {% for m in model.measures_modified %}
-      <div style="margin-bottom:1.2rem;">
-        <strong>{{ m.measure }}</strong>
-        <span class="tag {{ m.status }}">{{ m.status }}</span>
-        {% if m.status == 'modified' %}
-        <div class="dax-grid">
-          <div class="dax-box old">
-            <div class="dax-label">Old DAX</div>
-            <pre>{{ m.old_dax }}</pre>
-          </div>
-          <div class="dax-box new">
-            <div class="dax-label">New DAX</div>
-            <pre>{{ m.new_dax }}</pre>
-          </div>
-        </div>
-        {% elif m.status == 'added' %}
-        <div class="dax-box new" style="margin-top:0.5rem;">
-          <div class="dax-label">New DAX</div>
-          <pre>{{ m.new_dax }}</pre>
-        </div>
-        {% elif m.status == 'removed' %}
-        <div class="dax-box old" style="margin-top:0.5rem;">
-          <div class="dax-label">Old DAX</div>
-          <pre>{{ m.old_dax }}</pre>
-        </div>
-        {% endif %}
+
+
+<!-- ── Stat Row ─────────────────────────────────────────────── -->
+
+<div class="statrow">
+
+  <div class="stat"><div class="snum g">{{ model.tables_added|length }}</div><div class="slbl">Tables Added</div></div>
+
+  <div class="stat"><div class="snum r">{{ model.tables_removed|length }}</div><div class="slbl">Tables Removed</div></div>
+
+  <div class="stat"><div class="snum a">{{ model.measures_modified|length }}</div><div class="slbl">Measures Changed</div></div>
+
+  <div class="stat"><div class="snum p">{{ (model.columns_added|length) + (model.columns_removed|length) }}</div><div class="slbl">Column Changes</div></div>
+
+  <div class="stat"><div class="snum g">{{ report.pages_added|length }}</div><div class="slbl">Pages Added</div></div>
+
+  <div class="stat"><div class="snum r">{{ report.pages_removed|length }}</div><div class="slbl">Pages Removed</div></div>
+
+  <div class="stat"><div class="snum a">{{ report.pages_changed|length }}</div><div class="slbl">Pages Changed</div></div>
+
+  <div class="stat"><div class="snum {% if total_changes==0 %}g{% else %}c{% endif %}">{{ total_changes }}</div><div class="slbl">Total Changes</div></div>
+
+</div>
+
+
+
+<!-- ── Shell ────────────────────────────────────────────────── -->
+
+<div class="shell">
+
+
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+
+  <div class="sidebar">
+
+    <div class="sidebar-tabs">
+
+      <div class="stab active" id="stab-model" onclick="switchTab('model')">🗄 Model</div>
+
+      <div class="stab" id="stab-report" onclick="switchTab('report')">📄 Report</div>
+
+    </div>
+
+
+
+    <!-- Model Nav -->
+
+    <div class="nav-list" id="nav-model">
+
+      <div class="nav-grp">Overview</div>
+
+      <div class="nav-item active" onclick="goto('overview',this)"><span class="ndot b"></span>Summary</div>
+
+      <div class="nav-grp">SemanticModel</div>
+
+      <div class="nav-item" onclick="goto('tables',this)">
+
+        <span class="ndot g"></span>Tables
+
+        <span class="nbadge">{{ model.tables_added|length }}+ {{ model.tables_removed|length }}-</span>
+
       </div>
-      {% endfor %}
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No measure changes.</p>
-    {% endif %}
-  </div>
-  {% endif %}
 
+      <div class="nav-item" onclick="goto('columns',this)">
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!--  REPORT SECTION                                        -->
-  <!-- ══════════════════════════════════════════════════════ -->
-  {% if report %}
-  <h2>📄 Report Changes</h2>
+        <span class="ndot a"></span>Columns
 
-  <!-- Pages -->
-  <div class="panel">
-    <h3>Pages</h3>
-    {% if report.pages_added %}
-      {% for p in report.pages_added %}
-        <span class="tag added">+ {{ p }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if report.pages_removed %}
-      {% for p in report.pages_removed %}
-        <span class="tag removed">- {{ p }}</span>
-      {% endfor %}
-    {% endif %}
-    {% if not report.pages_added and not report.pages_removed %}
-      <p style="color:#aaa; font-size:0.85rem;">No page changes.</p>
-    {% endif %}
-  </div>
+        <span class="nbadge">{{ (model.columns_added|length)+(model.columns_removed|length) }}</span>
 
-  <!-- Visuals -->
- <!-- Visuals -->
-<div class="panel">
-  <h3>Visuals Modified</h3>
-  {% if report.visuals_modified %}
-  {% for v in report.visuals_modified %}
-  <div style="margin-bottom: 1.5rem; border: 1px solid #e8edf2; border-radius:8px; padding: 1rem;">
-
-    <!-- Visual Header -->
-    <div style="display:flex; align-items:center; gap:0.8rem; margin-bottom:0.8rem;">
-      <strong>{{ v.page }}</strong>
-      <span class="tag {{ v.status }}">{{ v.status }}</span>
-      <span style="font-size:0.8rem; color:#888;">{{ v.visual_type }}</span>
-    </div>
-
-    <!-- Chart Type Change -->
-    {% if v.changes.property_changes %}
-    <div style="margin-bottom:0.8rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.4rem;">Chart Type</div>
-      <div class="dax-grid">
-        <div class="dax-box old"><div class="dax-label">Old</div><pre>{{ v.changes.visual_type.old }}</pre></div>
-        <div class="dax-box new"><div class="dax-label">New</div><pre>{{ v.changes.visual_type.new }}</pre></div>
       </div>
-    </div>
-    {% endif %}
 
-    <!-- Field/Column Changes -->
-    {% if v.changes.values %}
-    <div style="margin-bottom:0.8rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.4rem;">Property Changes</div>
-      <table>
-        <thead><tr><th>Property</th><th>Old Value</th><th>New Value</th></tr></thead>
-        <tbody>
-          {% for key, val in v.changes.property_changes.items() %}
-          <tr>
-            <td style="font-size:0.78rem; color:#555; word-break:break-all;">{{ key }}</td>
-            <td><span class="tag removed">{{ val.old_value }}</span></td>
-            <td><span class="tag added">{{ val.new_value }}</span></td>
-          </tr>
+      <div class="nav-item" onclick="goto('measures',this)">
+
+        <span class="ndot p"></span>Measures / DAX
+
+        <span class="nbadge">{{ model.measures_modified|length }}</span>
+
+      </div>
+
+      <div class="nav-item" onclick="goto('partitions',this)">
+
+        <span class="ndot b"></span>Partitions
+
+        <span class="nbadge">{{ model.partitions_changed|length }}</span>
+
+      </div>
+
+      <div class="nav-item" onclick="goto('relationships',this)"><span class="ndot a"></span>Relationships</div>
+
+      <div class="nav-item" onclick="goto('roles',this)"><span class="ndot r"></span>Roles (RLS/OLS)</div>
+
+      {% if ai_summary and ai_summary.executive_summary %}
+
+      <div class="nav-grp">AI</div>
+
+      <div class="nav-item" onclick="goto('ai',this)"><span class="ndot p"></span>AI Analysis</div>
+
+      {% endif %}
+
+    </div>
+
+
+
+    <!-- Report Nav -->
+
+    <div class="nav-list" id="nav-report" style="display:none;">
+
+      {% if report.pages_changed %}
+
+      <div class="nav-grp">Changed</div>
+
+      {% for pg in report.pages_changed %}
+
+      <div class="nav-item" onclick="goto('rp-{{loop.index0}}',this);activateTab('rt-{{loop.index0}}')">
+
+        <span class="ndot a"></span>
+
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;" title="{{ pg.display_name }}">{{ pg.display_name }}</span>
+
+        <span class="nbadge">{{ pg.visuals_changed|length }}</span>
+
+      </div>
+
+      {% endfor %}
+
+      {% endif %}
+
+      {% if report.pages_added %}
+
+      <div class="nav-grp">Added</div>
+
+      {% for pg in report.pages_added %}
+
+      <div class="nav-item" onclick="goto('ap-{{loop.index0}}',this);activateTab('at-{{loop.index0}}')">
+
+        <span class="ndot g"></span>✨ {{ pg.display_name }}
+
+      </div>
+
+      {% endfor %}
+
+      {% endif %}
+
+      {% if report.pages_removed %}
+
+      <div class="nav-grp">Removed</div>
+
+      {% for pg in report.pages_removed %}
+
+      <div class="nav-item" onclick="goto('dp-{{loop.index0}}',this);activateTab('dt-{{loop.index0}}')">
+
+        <span class="ndot r"></span>🗑 {{ pg.display_name }}
+
+      </div>
+
+      {% endfor %}
+
+      {% endif %}
+
+    </div>
+
+  </div>
+
+
+
+  <!-- ── Content ───────────────────────────────────────────── -->
+
+  <div class="content">
+
+
+
+    <!-- ════ OVERVIEW ════ -->
+
+    <div id="section-overview" class="section active">
+
+      <div class="sec-title">📊 Summary <span class="badge">{{ total_changes }} total changes</span></div>
+
+      {% if total_changes==0 %}
+
+      <div class="panel" style="border-color:rgba(16,185,129,0.3);color:var(--psiog-green);">✅ No changes detected between the two versions.</div>
+
+      {% endif %}
+
+      <div style="margin-bottom:0.6rem;font-size:0.72rem;color:var(--psiog-muted);font-family:var(--mono);">
+
+        OLD: <span style="color:var(--psiog-sub);">{{ old_path }}</span> &nbsp;→&nbsp;
+
+        NEW: <span style="color:var(--psiog-sub);">{{ new_path }}</span>
+
+      </div>
+
+      <div class="sum-grid">
+
+        <div class="sum-card">
+
+          <div class="panel-title">SemanticModel</div>
+
+          <table style="table-layout:auto;">
+
+            <tr><td style="white-space:nowrap;max-width:none;">Tables Added</td><td style="max-width:60px;"><span class="tag add">{{ model.tables_added|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Tables Removed</td><td style="max-width:60px;"><span class="tag rem">{{ model.tables_removed|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Columns Added</td><td style="max-width:60px;"><span class="tag add">{{ model.columns_added|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Columns Removed</td><td style="max-width:60px;"><span class="tag rem">{{ model.columns_removed|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Columns Modified</td><td style="max-width:60px;"><span class="tag mod">{{ model.columns_modified|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Measures Changed</td><td style="max-width:60px;"><span class="tag mod">{{ model.measures_modified|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Partitions Changed</td><td style="max-width:60px;"><span class="tag mod">{{ model.partitions_changed|length }}</span></td></tr>
+
+          </table>
+
+        </div>
+
+        <div class="sum-card">
+
+          <div class="panel-title">Report</div>
+
+          <table style="table-layout:auto;">
+
+            <tr><td style="white-space:nowrap;max-width:none;">Pages Added</td><td style="max-width:60px;"><span class="tag add">{{ report.pages_added|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Pages Removed</td><td style="max-width:60px;"><span class="tag rem">{{ report.pages_removed|length }}</span></td></tr>
+
+            <tr><td style="white-space:nowrap;max-width:none;">Pages Changed</td><td style="max-width:60px;"><span class="tag mod">{{ report.pages_changed|length }}</span></td></tr>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- ════ TABLES ════ -->
+
+    <div id="section-tables" class="section">
+
+      <div class="sec-title">🗄️ Tables</div>
+
+      {% if model.tables_added %}
+
+      <div class="panel">
+
+        <div class="panel-title">Added ({{ model.tables_added|length }})</div>
+
+        {% for t in model.tables_added %}
+
+        {% set is_auto = 'LocalDateTable' in t.name or 'DateTableTemplate' in t.name %}
+
+        <div class="tbl-card">
+
+          <div class="tbl-card-head">
+
+            {% if is_auto %}
+
+              <span class="tbl-nm auto">🗓 {{ t.name.split('_')[0] }} <span class="auto-lbl">auto date table</span></span>
+
+            {% else %}
+
+              <span class="tbl-nm">{{ t.name }}</span>
+
+            {% endif %}
+
+            <span class="tag add">+ Added</span>
+
+          </div>
+
+          {% if t.columns %}
+
+          <div style="margin-bottom:0.55rem;">
+
+            <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--psiog-muted);margin-bottom:.25rem;">Columns ({{ t.columns|length }})</div>
+
+            {% for col in t.columns %}<span class="tag inf">{{ col }}</span>{% endfor %}
+
+          </div>
+
+          {% endif %}
+
+          {% if t.partitions %}
+
+          <div style="margin-bottom:0.55rem;">
+
+            <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--psiog-muted);margin-bottom:.25rem;">Source / Partitions</div>
+
+            {% for p in t.partitions %}
+
+            <div style="margin-bottom:.45rem;">
+
+              <span class="tag inf">{{ p.name }}</span> <span style="font-size:.65rem;color:var(--psiog-muted);">{{ p.mode }}</span>
+
+              {% if p.source %}<div class="dax-box new" style="margin-top:.25rem;"><div class="dax-lbl">M Query</div><pre>{{ p.source }}</pre></div>{% endif %}
+
+            </div>
+
+            {% endfor %}
+
+          </div>
+
+          {% endif %}
+
+          {% if t.measures %}
+
+          <div>
+
+            <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--psiog-muted);margin-bottom:.3rem;">Measures ({{ t.measures|length }})</div>
+
+            {% for m in t.measures %}
+
+            <div style="margin-bottom:.5rem;">
+
+              <span class="tag add">{{ m.name }}</span>
+
+              {% if m.dax %}<div class="dax-box new" style="margin-top:.22rem;"><div class="dax-lbl">DAX</div><pre>{{ m.dax }}</pre></div>{% endif %}
+
+            </div>
+
+            {% endfor %}
+
+          </div>
+
+          {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+
+      {% endif %}
+
+      {% if model.tables_removed %}
+
+      <div class="panel">
+
+        <div class="panel-title">Removed ({{ model.tables_removed|length }})</div>
+
+        {% for t in model.tables_removed %}
+
+        <div class="tbl-card rem">
+
+          <div class="tbl-card-head">
+
+            <span class="tbl-nm" style="color:var(--psiog-red);">{{ t.name }}</span>
+
+            <span class="tag rem">- Removed</span>
+
+          </div>
+
+          {% if t.columns %}<div>{% for c in t.columns %}<span class="tag rem">{{ c }}</span>{% endfor %}</div>{% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+
+      {% endif %}
+
+      {% if not model.tables_added and not model.tables_removed %}<div class="empty">No table changes.</div>{% endif %}
+
+    </div>
+
+
+
+    <!-- ════ COLUMNS ════ -->
+
+    <div id="section-columns" class="section">
+
+      <div class="sec-title">🔢 Columns</div>
+
+      {% if model.columns_added or model.columns_removed or model.columns_modified %}
+
+      <div class="panel">
+
+        <table>
+
+          <colgroup>
+
+            <col style="width:25%"><col style="width:25%"><col style="width:12%"><col style="width:38%">
+
+          </colgroup>
+
+          <thead><tr><th>Table</th><th>Column</th><th>Status</th><th>Detail</th></tr></thead>
+
+          <tbody>
+
+            {% for c in model.columns_added %}
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="{{ c.table }}">{{ c.table }}</span></td>
+
+              <td><span class="tooltip-cell" title="{{ c.column }}" style="font-family:var(--mono);">{{ c.column }}</span></td>
+
+              <td><span class="tag add">Added</span></td>
+
+              <td><span style="color:var(--psiog-muted);font-size:.72rem;">{{ c.dataType }}</span></td>
+
+            </tr>
+
+            {% endfor %}
+
+            {% for c in model.columns_removed %}
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="{{ c.table }}">{{ c.table }}</span></td>
+
+              <td><span class="tooltip-cell" title="{{ c.column }}" style="font-family:var(--mono);">{{ c.column }}</span></td>
+
+              <td><span class="tag rem">Removed</span></td>
+
+              <td>—</td>
+
+            </tr>
+
+            {% endfor %}
+
+            {% for c in model.columns_modified %}
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="{{ c.table }}">{{ c.table }}</span></td>
+
+              <td><span class="tooltip-cell" title="{{ c.column }}" style="font-family:var(--mono);">{{ c.column }}</span></td>
+
+              <td><span class="tag mod">Modified</span></td>
+
+              <td class="wrap">{% for k,v in c.changes.items() %}<div style="font-size:.7rem;"><span style="color:var(--psiog-muted);">{{ k }}:</span> <span class="tag rem">{{ v.old }}</span>→<span class="tag add">{{ v.new }}</span></div>{% endfor %}</td>
+
+            </tr>
+
+            {% endfor %}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      {% else %}<div class="empty">No column changes.</div>{% endif %}
+
+    </div>
+
+
+
+    <!-- ════ MEASURES ════ -->
+
+    <div id="section-measures" class="section">
+
+      <div class="sec-title">📐 Measures / DAX</div>
+
+      {% if model.measures_modified %}
+
+        {% for m in model.measures_modified %}
+
+        <div class="panel" style="margin-bottom:.7rem;">
+
+          <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.7rem;flex-wrap:wrap;">
+
+            <span style="font-family:var(--mono);font-weight:600;font-size:.82rem;">{{ m.measure }}</span>
+
+            <span class="tag {{ 'add' if m.status=='added' else 'rem' if m.status=='removed' else 'mod' }}">{{ m.status }}</span>
+
+            {% if m.formatString %}<span style="font-size:.65rem;color:var(--psiog-muted);">fmt: {{ m.formatString }}</span>{% endif %}
+
+          </div>
+
+          {% if m.description %}<div style="font-size:.75rem;color:var(--psiog-sub);margin-bottom:.5rem;font-style:italic;">{{ m.description }}</div>{% endif %}
+
+          {% if m.status=='modified' %}
+
+          <div class="dax-grid">
+
+            <div class="dax-box old"><div class="dax-lbl">Old DAX</div><pre>{{ m.old_dax }}</pre></div>
+
+            <div class="dax-box new"><div class="dax-lbl">New DAX</div><pre>{{ m.new_dax }}</pre></div>
+
+          </div>
+
+          {% elif m.status=='added' %}
+
+          <div class="dax-box new"><div class="dax-lbl">DAX Expression</div><pre>{{ m.new_dax }}</pre></div>
+
+          {% else %}
+
+          <div class="dax-box old"><div class="dax-lbl">Removed DAX</div><pre>{{ m.old_dax }}</pre></div>
+
+          {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      {% else %}<div class="empty">No measure changes.</div>{% endif %}
+
+    </div>
+
+
+
+    <!-- ════ PARTITIONS ════ -->
+
+    <div id="section-partitions" class="section">
+
+      <div class="sec-title">⚙️ Partitions / Source Queries</div>
+
+      {% if model.partitions_changed %}
+
+        {% for p in model.partitions_changed %}
+
+        <div class="panel" style="margin-bottom:.7rem;">
+
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem;flex-wrap:wrap;">
+
+            <span style="font-family:var(--mono);font-weight:600;font-size:.82rem;">{{ p.table }}</span>
+
+            <span style="color:var(--psiog-muted);font-size:.72rem;">/</span>
+
+            <span style="font-family:var(--mono);font-size:.78rem;color:var(--psiog-sub);">{{ p.partition }}</span>
+
+            <span class="tag {{ 'add' if p.status=='added' else 'rem' if p.status=='removed' else 'mod' }}">{{ p.status }}</span>
+
+          </div>
+
+          {% if p.status=='modified' %}
+
+          <div class="dax-grid">
+
+            <div class="dax-box old"><div class="dax-lbl">Old ({{ p.old_mode }})</div><pre>{{ p.old_source or 'N/A' }}</pre></div>
+
+            <div class="dax-box new"><div class="dax-lbl">New ({{ p.new_mode }})</div><pre>{{ p.new_source or 'N/A' }}</pre></div>
+
+          </div>
+
+          {% elif p.status=='added' %}
+
+          <div class="dax-box new"><div class="dax-lbl">Source ({{ p.mode }})</div><pre>{{ p.source or 'N/A' }}</pre></div>
+
+          {% else %}
+
+          <div class="dax-box old"><div class="dax-lbl">Removed ({{ p.mode }})</div><pre>{{ p.source or 'N/A' }}</pre></div>
+
+          {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      {% else %}<div class="empty">No partition or query changes.</div>{% endif %}
+
+    </div>
+
+
+
+    <!-- ════ RELATIONSHIPS ════ -->
+
+    <div id="section-relationships" class="section">
+
+      <div class="sec-title">🔗 Relationships</div>
+
+      {% set rel = model.relationships %}
+
+      {% if rel and (rel.added or rel.removed or rel.modified) %}
+
+        {% if rel.added %}<div class="panel"><div class="panel-title">Added</div>{% for k,v in rel.added.items() %}<div style="font-family:var(--mono);font-size:.75rem;margin-bottom:.3rem;"><span class="tag add">+</span> <span class="tooltip-cell" title="{{ v|string }}" style="display:inline;overflow:hidden;text-overflow:ellipsis;max-width:400px;white-space:nowrap;">{{ v|string|truncate(100) }}</span></div>{% endfor %}</div>{% endif %}
+
+        {% if rel.removed %}<div class="panel"><div class="panel-title">Removed</div>{% for k,v in rel.removed.items() %}<div style="font-family:var(--mono);font-size:.75rem;margin-bottom:.3rem;"><span class="tag rem">-</span> <span class="tooltip-cell" title="{{ v|string }}" style="display:inline;">{{ v|string|truncate(100) }}</span></div>{% endfor %}</div>{% endif %}
+
+      {% else %}<div class="empty">No relationship changes.</div>{% endif %}
+
+    </div>
+
+
+
+    <!-- ════ ROLES ════ -->
+
+    <div id="section-roles" class="section">
+
+      <div class="sec-title">🔒 Roles — RLS / OLS</div>
+
+      {% set roles = model.roles_changed %}
+
+      {% if roles and (roles.added or roles.removed or roles.modified) %}
+
+        {% if roles.added %}<div class="panel"><div class="panel-title">Added</div>{% for r in roles.added %}<div style="margin-bottom:.6rem;"><span class="tag add">{{ r.name }}</span>{% for p in r.permissions %}<div style="font-size:.72rem;color:var(--psiog-muted);margin-left:.5rem;">{{ p.table }}{% if p.filterExpr %}: <span style="font-family:var(--mono);color:var(--psiog-amber);">{{ p.filterExpr }}</span>{% endif %}</div>{% endfor %}</div>{% endfor %}</div>{% endif %}
+
+        {% if roles.removed %}<div class="panel"><div class="panel-title">Removed</div>{% for r in roles.removed %}<span class="tag rem">{{ r.name }}</span>{% endfor %}</div>{% endif %}
+
+        {% if roles.modified %}
+
+        <div class="panel"><div class="panel-title">Modified</div>
+
+          {% for r in roles.modified %}
+
+          <div style="margin-bottom:.8rem;"><span class="tag mod">{{ r.name }}</span>
+
+            <div class="dax-grid" style="margin-top:.4rem;">
+
+              <div class="dax-box old"><div class="dax-lbl">Old</div><pre>{% for p in r.old_permissions %}{{ p.table }}: {{ p.filterExpr or 'no filter' }}\n{% endfor %}</pre></div>
+
+              <div class="dax-box new"><div class="dax-lbl">New</div><pre>{% for p in r.new_permissions %}{{ p.table }}: {{ p.filterExpr or 'no filter' }}\n{% endfor %}</pre></div>
+
+            </div>
+
+          </div>
+
           {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
 
-    <!-- Fields Added -->
-    {% if v.changes.fields_added %}
-    <div style="margin-bottom:0.5rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.3rem;">Fields Added</div>
-      {% for k, val in v.changes.fields_added.items() %}
-        <span class="tag added">+ {{ val }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
+        </div>{% endif %}
 
-    <!-- Fields Removed -->
-    {% if v.changes.fields_removed %}
-    <div style="margin-bottom:0.5rem;">
-      <div style="font-size:0.78rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:0.3rem;">Fields Removed</div>
-      {% for k, val in v.changes.fields_removed.items() %}
-        <span class="tag removed">- {{ val }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
+      {% else %}<div class="empty">No role changes.</div>{% endif %}
 
-  </div>
+    </div>
+
+
+
+    <!-- ════ PAGES CHANGED ════ -->
+
+    {% for pg in report.pages_changed %}
+
+    <div id="section-rp-{{ loop.index0 }}" class="section">
+
+      <div class="sec-title">📄 {{ pg.display_name }} <span class="tag mod">Changed</span>
+
+        <span class="badge">{{ pg.visuals_changed|length }} visual(s)</span>
+
+      </div>
+
+      {% if pg.settings_changed %}
+
+      <div class="panel">
+
+        <div class="panel-title">Page Settings</div>
+
+        <table style="table-layout:auto;">
+
+          <thead><tr><th>Property</th><th>Old</th><th>New</th></tr></thead>
+
+          <tbody>{% for k,v in pg.settings_changed.items() %}<tr><td style="font-family:var(--mono);white-space:nowrap;max-width:none;">{{ k }}</td><td><span class="tag rem">{{ v.old }}</span></td><td><span class="tag add">{{ v.new }}</span></td></tr>{% endfor %}</tbody>
+
+        </table>
+
+      </div>{% endif %}
+
+      {% if pg.visuals_changed %}
+
+      <div class="panel">
+
+        <div class="panel-title">Visual Changes</div>
+
+        {% for v in pg.visuals_changed %}
+
+        <div class="vis-card {{ 'add' if v.status=='added' else 'rem' if v.status=='removed' else 'mod' }}">
+
+          <div class="vis-head">
+
+            <span class="tag {{ 'add' if v.status=='added' else 'rem' if v.status=='removed' else 'mod' }}">{{ v.status }}</span>
+
+            <span style="font-family:var(--mono);font-size:.78rem;color:var(--psiog-cyan);">{{ v.visual_type }}</span>
+
+            <span style="font-size:.65rem;color:var(--psiog-muted);overflow:hidden;text-overflow:ellipsis;max-width:200px;" title="{{ v.visual_id }}">{{ v.visual_id }}</span>
+
+          </div>
+
+          {% if v.fields %}
+
+          <div style="margin-bottom:.5rem;">
+
+            <div style="font-size:.58rem;text-transform:uppercase;color:var(--psiog-muted);margin-bottom:.2rem;">Fields</div>
+
+            {% for f in v.fields %}<span class="tag inf" title="{{ f }}">{{ f|truncate(30) }}</span>{% endfor %}
+
+          </div>{% endif %}
+
+          {% if v.changes.visual_type %}
+
+          <div style="margin-bottom:.55rem;">
+
+            <div style="font-size:.58rem;text-transform:uppercase;color:var(--psiog-muted);margin-bottom:.28rem;">Chart Type</div>
+
+            <div class="dax-grid">
+
+              <div class="dax-box old"><div class="dax-lbl">Old</div><pre>{{ v.changes.visual_type.old }}</pre></div>
+
+              <div class="dax-box new"><div class="dax-lbl">New</div><pre>{{ v.changes.visual_type.new }}</pre></div>
+
+            </div>
+
+          </div>{% endif %}
+
+          {% if v.changes.field_swap %}
+
+          <div style="margin-bottom:.4rem;">
+
+            <div style="font-size:.58rem;text-transform:uppercase;color:var(--psiog-muted);margin-bottom:.2rem;">Field Swaps</div>
+
+            {% for f in v.changes.field_swap.removed %}<span class="tag rem" title="{{ f }}">- {{ f|truncate(35) }}</span>{% endfor %}
+
+            {% for f in v.changes.field_swap.added   %}<span class="tag add" title="{{ f }}">+ {{ f|truncate(35) }}</span>{% endfor %}
+
+          </div>{% endif %}
+
+          {% if v.changes.property_changes %}
+
+          <table style="margin-top:.35rem;table-layout:fixed;">
+
+            <colgroup><col style="width:40%"><col style="width:30%"><col style="width:30%"></colgroup>
+
+            <thead><tr><th>Property</th><th>Old</th><th>New</th></tr></thead>
+
+            <tbody>
+
+              {% for k,val in v.changes.property_changes.items() %}
+
+              <tr>
+
+                <td><span class="tooltip-cell" title="{{ k }}" style="font-family:var(--mono);font-size:.68rem;color:var(--psiog-muted);">{{ k|truncate(40) }}</span></td>
+
+                <td><span class="tag rem" title="{{ val.old_value }}">{{ val.old_value|string|truncate(25) }}</span></td>
+
+                <td><span class="tag add" title="{{ val.new_value }}">{{ val.new_value|string|truncate(25) }}</span></td>
+
+              </tr>
+
+              {% endfor %}
+
+            </tbody>
+
+          </table>{% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      </div>{% endif %}
+
+      {% if pg.filters_changed %}<div class="panel"><div class="panel-title">Filters</div><span class="tag mod">Filter configuration changed</span></div>{% endif %}
+
+      {% if not pg.visuals_changed and not pg.filters_changed and not pg.settings_changed %}<div class="empty">No changes recorded.</div>{% endif %}
+
+    </div>
+
+    {% endfor %}
+
+
+
+    <!-- ════ PAGES ADDED ════ -->
+
+    {% for pg in report.pages_added %}
+
+    <div id="section-ap-{{ loop.index0 }}" class="section">
+
+      <div class="sec-title">✨ {{ pg.display_name }} <span class="tag add">New Page</span></div>
+
+      <div class="pg-banner new-pg"><strong style="color:var(--psiog-green);">New page added</strong> — did not exist in old version. All visuals below are new.</div>
+
+      {% if pg.visuals %}
+
+      <div class="panel">
+
+        <div class="panel-title">Visuals Added ({{ pg.visuals|length }})</div>
+
+        {% for v in pg.visuals %}
+
+        <div class="vis-card add">
+
+          <div class="vis-head">
+
+            <span class="tag add">+ New</span>
+
+            <span style="font-family:var(--mono);font-size:.78rem;color:var(--psiog-cyan);">{{ v.visual_type }}</span>
+
+            <span style="font-size:.65rem;color:var(--psiog-muted);" title="{{ v.visual_id }}">{{ v.visual_id|truncate(30) }}</span>
+
+          </div>
+
+          {% if v.fields %}<div>{% for f in v.fields %}<span class="tag inf" title="{{ f }}">{{ f|truncate(30) }}</span>{% endfor %}</div>{% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+
+      {% else %}<div class="empty">No visuals found.</div>{% endif %}
+
+    </div>
+
+    {% endfor %}
+
+
+
+    <!-- ════ PAGES REMOVED ════ -->
+
+    {% for pg in report.pages_removed %}
+
+    <div id="section-dp-{{ loop.index0 }}" class="section">
+
+      <div class="sec-title">🗑 {{ pg.display_name }} <span class="tag rem">Removed</span></div>
+
+      <div class="pg-banner del-pg"><strong style="color:var(--psiog-red);">Page removed</strong> — existed in old version, deleted in new. Visuals below no longer exist.</div>
+
+      {% if pg.visuals %}
+
+      <div class="panel">
+
+        <div class="panel-title">Visuals That Existed ({{ pg.visuals|length }})</div>
+
+        {% for v in pg.visuals %}
+
+        <div class="vis-card rem">
+
+          <div class="vis-head">
+
+            <span class="tag rem">- Removed</span>
+
+            <span style="font-family:var(--mono);font-size:.78rem;color:var(--psiog-red);">{{ v.visual_type }}</span>
+
+          </div>
+
+          {% if v.fields %}<div>{% for f in v.fields %}<span class="tag rem" title="{{ f }}">{{ f|truncate(30) }}</span>{% endfor %}</div>{% endif %}
+
+        </div>
+
+        {% endfor %}
+
+      </div>
+
+      {% else %}<div class="empty">No visuals recorded.</div>{% endif %}
+
+    </div>
+
+    {% endfor %}
+
+
+
+    <!-- ════ AI SUMMARY ════ -->
+
+    {% if ai_summary and ai_summary.executive_summary %}
+
+    <div id="section-ai" class="section">
+
+      <div class="sec-title">🤖 AI Analysis</div>
+
+      <div class="ai-exec">{{ ai_summary.executive_summary }}</div>
+
+      {% if ai_summary.differences %}
+
+      <div class="panel">
+
+        <div class="panel-title">Differences Breakdown</div>
+
+        <table>
+
+          <colgroup>
+
+            <col style="width:14%"><col style="width:30%"><col style="width:20%"><col style="width:20%"><col style="width:10%">
+
+          </colgroup>
+
+          <thead><tr><th>Category</th><th>What Changed</th><th>Old</th><th>New</th><th>Impact</th></tr></thead>
+
+          <tbody>
+
+            {% for d in ai_summary.differences %}
+
+            <tr>
+
+              <td><span class="tooltip-cell" title="{{ d.category }}">{{ d.category|truncate(20) }}</span></td>
+
+              <td class="wrap" style="white-space:normal;font-size:.75rem;">{{ d.what_changed }}</td>
+
+              <td><span class="tag rem" title="{{ d.old_value }}">{{ d.old_value|string|truncate(28) }}</span></td>
+
+              <td><span class="tag add" title="{{ d.new_value }}">{{ d.new_value|string|truncate(28) }}</span></td>
+
+              <td><span class="tag {{ 'hi' if d.impact=='High' else 'med' if d.impact=='Medium' else 'lo' }}">{{ d.impact }}</span></td>
+
+            </tr>
+
+            {% endfor %}
+
+          </tbody>
+
+        </table>
+
+      </div>{% endif %}
+
+      {% if ai_summary.enhancements %}
+
+      <div class="panel">
+
+        <div class="panel-title">Enhancements & Insights</div>
+
+        {% for e in ai_summary.enhancements %}
+
+        <div class="enh-card">
+
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+
+            <strong style="font-size:.82rem;">{{ e.title }}</strong>
+
+            <span class="tag {{ 'add' if e.type=='Improvement' else 'rem' if e.type=='Risk' else 'mod' }}">{{ e.type }}</span>
+
+          </div>
+
+          <p style="font-size:.78rem;color:var(--psiog-sub);line-height:1.65;">{{ e.description }}</p>
+
+        </div>{% endfor %}
+
+      </div>{% endif %}
+
+      {% if ai_summary.risk_flags %}
+
+      <div class="panel">
+
+        <div class="panel-title">⚠️ Risk Flags</div>
+
+        {% for r in ai_summary.risk_flags %}
+
+        <div class="risk-card">
+
+          <strong style="color:var(--psiog-red);font-size:.8rem;">{{ r.flag }}</strong>
+
+          <p style="font-size:.76rem;color:var(--psiog-sub);margin-top:.18rem;">{{ r.detail }}</p>
+
+        </div>{% endfor %}
+
+      </div>{% endif %}
+
+    </div>{% endif %}
+
+
+
+  </div><!-- /content -->
+
+</div><!-- /shell -->
+
+
+
+<!-- ── Bottom Navbar ─────────────────────────────────────────── -->
+
+<div class="bottom-nav">
+
+  <div class="btab active" onclick="goto('overview',null);activateTab(this)">📊 Overview</div>
+
+  {% for pg in report.pages_changed %}
+
+  <div class="btab chg" id="rt-{{loop.index0}}" onclick="goto('rp-{{loop.index0}}',null);activateTab(this);switchTab('report')">{{ pg.display_name|truncate(20) }}</div>
+
   {% endfor %}
-  {% else %}
-  <p style="color:#aaa; font-size:0.85rem;">No visual changes.</p>
+
+  {% for pg in report.pages_added %}
+
+  <div class="btab new-t" id="at-{{loop.index0}}" onclick="goto('ap-{{loop.index0}}',null);activateTab(this);switchTab('report')">✨ {{ pg.display_name|truncate(18) }}</div>
+
+  {% endfor %}
+
+  {% for pg in report.pages_removed %}
+
+  <div class="btab del-t" id="dt-{{loop.index0}}" onclick="goto('dp-{{loop.index0}}',null);activateTab(this);switchTab('report')">🗑 {{ pg.display_name|truncate(18) }}</div>
+
+  {% endfor %}
+
+  {% if ai_summary and ai_summary.executive_summary %}
+
+  <div class="btab" onclick="goto('ai',null);activateTab(this)">🤖 AI</div>
+
   {% endif %}
+
 </div>
 
-  <!-- Filters -->
-  <div class="panel">
-    <h3>Filters & Slicers</h3>
-    {% if report.filters_changed or report.slicers_changed %}
-    <table>
-      <thead><tr><th>Page</th><th>Type</th></tr></thead>
-      <tbody>
-        {% for f in report.filters_changed %}
-        <tr><td>{{ f.page }}</td><td><span class="tag modified">Filter Changed</span></td></tr>
-        {% endfor %}
-        {% for s in report.slicers_changed %}
-        <tr><td>{{ s.page }}</td><td><span class="tag modified">Slicer Changed</span></td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No filter or slicer changes.</p>
-    {% endif %}
-  </div>
-  <!-- Fields Changed -->
-{% if report.fields_changed %}
-<div class="panel">
-  <h3>Field / Column Swaps</h3>
-  <table>
-    <thead><tr><th>Page</th><th>Visual ID</th><th>Removed</th><th>Added</th></tr></thead>
-    <tbody>
-      {% for f in report.fields_changed %}
-      <tr>
-        <td>{{ f.page }}</td>
-        <td style="font-size:0.75rem; color:#aaa;">{{ f.visual_id }}</td>
-        <td>{% for field in f.fields_removed %}<span class="tag removed">{{ field }}</span>{% endfor %}</td>
-        <td>{% for field in f.fields_added %}<span class="tag added">{{ field }}</span>{% endfor %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
-  {% endif %}
 
 
-  <!-- ══════════════════════════════════════════════════════ -->
-  <!--  LAYOUT SECTION                                        -->
-  <!-- ══════════════════════════════════════════════════════ -->
-  {% if layout %}
-  <h2>🎨 Layout Changes</h2>
+<script>
 
-  <div class="panel">
-    <h3>Canvas Settings</h3>
-    {% if layout.canvas_settings %}
-    <table>
-      <thead><tr><th>Page</th><th>Changed Properties</th></tr></thead>
-      <tbody>
-        {% for c in layout.canvas_settings %}
-        <tr>
-          <td>{{ c.page }}</td>
-          <td>{{ c.changes.modified.keys() | list | join(', ') }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No canvas changes.</p>
-    {% endif %}
-  </div>
+  function goto(id, navEl) {
 
-  <div class="panel">
-    <h3>Bookmarks</h3>
-    {% set bm_total = layout.bookmarks.added | length + layout.bookmarks.removed | length + layout.bookmarks.modified | length %}
-    {% if bm_total > 0 %}
-      <span class="tag added">{{ layout.bookmarks.added | length }} Added</span>
-      <span class="tag removed">{{ layout.bookmarks.removed | length }} Removed</span>
-      <span class="tag modified">{{ layout.bookmarks.modified | length }} Modified</span>
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No bookmark changes.</p>
-    {% endif %}
-  </div>
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
 
-  <div class="panel">
-    <h3>Z-Order</h3>
-    {% if layout.z_order %}
-    <table>
-      <thead><tr><th>Page</th><th>Changes</th></tr></thead>
-      <tbody>
-        {% for z in layout.z_order %}
-        <tr>
-          <td>{{ z.page }}</td>
-          <td>
-            {% if z.changes.added %}
-              <span class="tag added">{{ z.changes.added | length }} Added</span>
-            {% endif %}
-            {% if z.changes.removed %}
-              <span class="tag removed">{{ z.changes.removed | length }} Removed</span>
-            {% endif %}
-            {% if z.changes.modified %}
-              <span class="tag modified">{{ z.changes.modified | length }} Modified</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p style="color:#aaa; font-size:0.85rem;">No z-order changes.</p>
-    {% endif %}
-  </div>
-  {% endif %}
+    const t = document.getElementById('section-' + id);
 
-  <!-- ── Footer ─────────────────────────────────────────── -->
-  <div class="footer">
-    Power BI Diff Tool — Generated {{ generated_at }} | {{ environment }} environment
-  </div>
+    if (t) t.classList.add('active');
+
+    if (navEl) {
+
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+      navEl.classList.add('active');
+
+    }
+
+  }
+
+  function activateTab(el) {
+
+    document.querySelectorAll('.btab').forEach(t => t.classList.remove('active'));
+
+    if (el && el.classList) el.classList.add('active');
+
+  }
+
+  function switchTab(tab) {
+
+    document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+
+    document.getElementById('stab-' + tab).classList.add('active');
+
+    document.getElementById('nav-model').style.display  = tab==='model'  ? 'block' : 'none';
+
+    document.getElementById('nav-report').style.display = tab==='report' ? 'block' : 'none';
+
+  }
+
+</script>
 
 </body>
+
 </html>

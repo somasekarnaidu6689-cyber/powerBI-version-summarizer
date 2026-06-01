@@ -1,0 +1,24 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["Customers1","PowerBI-Datasets-main"]
+
+annotation PBI_ProTooling = ["DevMode","TMDLView_Desktop"]
+
+ref table Customers1
+ref table DateTableTemplate_f61d36a0-5d14-4a28-a7da-cdd318fbacc2
+ref table LocalDateTable_fc98a574-e763-4d4b-9c07-954e313107f1
+ref table PowerBI-Datasets-main
+ref table LocalDateTable_53a5f2dc-55d7-429e-b6a8-356c169d4812
+ref table LocalDateTable_8b371d35-fee7-4c0c-88e3-6e669f04fb7f
+ref table LocalDateTable_370c322f-a9fe-49ca-9c41-7f796dcf9369
+
+ref cultureInfo en-US
+

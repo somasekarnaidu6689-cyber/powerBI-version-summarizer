@@ -13,7 +13,8 @@ def generate_report(
     old_path: Path,
     new_path: Path,
     fmt: str,
-    duration_seconds: float = None
+    duration_seconds: float = None,
+    ai_summary: dict = None
 ) -> None:
     """
     Aggregates results from all comparators and produces:
@@ -28,7 +29,8 @@ def generate_report(
         old_path,
         new_path,
         fmt,
-        duration_seconds
+        duration_seconds,
+        ai_summary or {}
     )
 
 
@@ -100,7 +102,8 @@ def write_html(
     old_path: Path,
     new_path: Path,
     fmt: str,
-    duration_seconds: float = None
+    duration_seconds: float = None,
+    ai_summary: dict = None
 ) -> None:
     """
     Renders the Jinja2 HTML template and writes the report
@@ -125,6 +128,7 @@ def write_html(
         "model":          model_results or {},
         "report":         report_results or {},
         "layout":         layout_results or {},
+        "ai_summary":     ai_summary or {},
         "total_changes":  _count_total_changes(model_results, report_results, layout_results),
     }
 

@@ -21,3 +21,7 @@ SAMPLE_PAGES = None           # Set to an int (e.g. 5) to limit pages compared; 
 
 # ─── Auto-create output folder if it doesn't exist ────────────
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+
+# ─── AI Summarizer ────────────────────────────────────────────
+GROQ_API_KEY = ""  #paste your key
+ENABLE_AI_SUMMARY = True
