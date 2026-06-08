@@ -1,5 +1,7 @@
 # Power BI Diff Tool
 
+## Project WalkThrough - [ Document ](https://psiog0-my.sharepoint.com/:w:/g/personal/somsekar_naidu_psiog_com/IQDi6uSfkR4SSb_Vn8mIBaqnASNJbCH6wgY2hiQADwJYfjU?e=jpeYRq) 
+
 ## Project Overview
 
 This repository contains a Power BI version comparison tool focused on diffing Power BI Desktop projects and report definitions. It compares:
