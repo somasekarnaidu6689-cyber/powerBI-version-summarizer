@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout PR branch (new version)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -50,31 +50,91 @@ jobs:
           echo "status=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
+      - name: Extract old version of powerBi folder from base branch
+        if: steps.changed.outputs.pbip_changed == 'true'
+        shell: bash
+        run: |
+          mkdir -p /tmp/pbip_old
+          git fetch origin ${{ github.base_ref }} --depth=1
+          # Checkout just the powerBi folder from the base branch into a temp location
+          git --work-tree=/tmp/pbip_old checkout origin/${{ github.base_ref }} -- powerBi
+          echo "Old powerBi folder contents:"
+          ls /tmp/pbip_old/powerBi/
+
+      - name: Run PBIP diff
+        id: diff
+        if: steps.changed.outputs.pbip_changed == 'true'
+        shell: bash
+        run: |
+          mkdir -p results
+          # New version = current PR checkout (./powerBi)
+          # Old version = base branch snapshot (/tmp/pbip_old/powerBi)
+          OLD_PBIP=$(find /tmp/pbip_old/powerBi -name "*.pbip" | head -1)
+          NEW_PBIP=$(find ./powerBi -name "*.pbip" | head -1)
+
+          if [ -z "$OLD_PBIP" ]; then
+            echo "diff_output=No .pbip file found in base branch powerBi folder." >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          if [ -z "$NEW_PBIP" ]; then
+            echo "diff_output=No .pbip file found in PR powerBi folder." >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Old PBIP: $OLD_PBIP"
+          echo "New PBIP: $NEW_PBIP"
+
+          OLD_DIR=$(dirname "$OLD_PBIP")
+          NEW_DIR=$(dirname "$NEW_PBIP")
+
+          python pbix_diff/run.py --old "$OLD_DIR" --new "$NEW_DIR" 2>&1 | tee results/diff-output.txt
+          echo "diff_exit=$?" >> $GITHUB_OUTPUT
+
       - name: Generate PR comment
         shell: bash
         run: |
           python - <<PYEOF
           import os
+          import textwrap
 
-          status       = os.environ.get("STATUS", "1")
-          pbip_changed = os.environ.get("PBIP_CHANGED", "false")
+          status        = os.environ.get("STATUS", "1")
+          pbip_changed  = os.environ.get("PBIP_CHANGED", "false")
           changed_files = os.environ.get("CHANGED_FILES", "")
 
           with open("results/test-output.txt") as f:
               test_output = f.read()
 
+          diff_output = ""
+          diff_section = ""
+          if pbip_changed == "true":
+              try:
+                  with open("results/diff-output.txt") as f:
+                      diff_output = f.read()
+              except FileNotFoundError:
+                  diff_output = "Diff was not run or produced no output."
+
+              diff_section = f"""
+          <details>
+          <summary>PBIP diff report</summary>
+
+          \`\`\`
+          {diff_output}
+          \`\`\`
+
+          </details>
+          """
+
           result    = "✅ All tests passed"    if status == "0" else "❌ Some tests failed"
-          pbip_note = ("PBIP-related files were detected in this PR."
+          pbip_note = ("⚠️ PBIP-related files were detected in this PR — diff report below."
                        if pbip_changed == "true"
-                       else "No PBIP-related files were detected in this PR.")
+                       else "ℹ️ No PBIP-related files were detected in this PR.")
 
           body = f"""### GitHub PR Validation
 
           **Status:** {result}
           **PBIP detection:** {pbip_note}
-          **Command:** \`python -m unittest discover -s pbix_diff -p 'test_*.py'\`
-          **Exit code:** {status}
-
+          {diff_section}
           <details>
           <summary>Changed files</summary>
 
@@ -85,7 +145,7 @@ jobs:
           </details>
 
           <details>
-          <summary>Test output</summary>
+          <summary>Unit test output</summary>
 
           \`\`\`text
           {test_output}
@@ -94,7 +154,6 @@ jobs:
           </details>
           """
 
-          import textwrap
           body = textwrap.dedent(body)
 
           os.makedirs("results", exist_ok=True)
