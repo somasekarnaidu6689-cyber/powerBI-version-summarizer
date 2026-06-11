@@ -168,6 +168,14 @@ It:
 - runs unit tests
 - posts or updates a PR comment with results
 
+<img width="1352" height="633" alt="Screenshot 2026-06-11 222341" src="https://github.com/user-attachments/assets/68c686c3-c325-4bed-8ebb-6cefdd203452" /><br>
+
+<img width="1353" height="633" alt="Screenshot 2026-06-11 222404" src="https://github.com/user-attachments/assets/324321bb-cb64-4f97-bca1-19a7ace64bad" /><br>
+
+<img width="1352" height="578" alt="Screenshot 2026-06-11 222420" src="https://github.com/user-attachments/assets/c64c08d0-a7d6-40ed-9def-9e05a3b2c1e7" /><br>
+
+
+
 ## Notes
 
 - The current PR path enforces PBIP folders only.
