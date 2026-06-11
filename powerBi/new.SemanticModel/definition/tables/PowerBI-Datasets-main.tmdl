@@ -69,6 +69,13 @@ table PowerBI-Datasets-main
 
 		annotation SummarizationSetBy = Automatic
 
+	column Column
+		type: calculated
+		lineageTag: cf365827-4a11-434f-9e89-4324cedd4673
+		summarizeBy: sum
+
+		annotation SummarizationSetBy = Automatic
+
 	partition PowerBI-Datasets-main = m
 		mode: import
 		source =
