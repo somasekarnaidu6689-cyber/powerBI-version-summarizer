@@ -70,30 +70,32 @@ jobs:
           fi
 
           test_output=$(cat results/test-output.txt)
+          fence='```'
 
-          # Unquoted EOF allows variable expansion
           cat > results/comment.txt <<EOF
 ### GitHub PR Validation
 
 **Status:** $result
 **PBIP detection:** $pbip_note
-**Command:** \`python -m unittest discover -s pbix_diff -p 'test_*.py'\`
+**Command:** ${fence}python -m unittest discover -s pbix_diff -p 'test_*.py'${fence}
 **Exit code:** $status
 
 <details>
 <summary>Changed files</summary>
 
-\`\`\`text
+${fence}text
 $changed_files
-\`\`\`
+${fence}
+
 </details>
 
 <details>
 <summary>Test output</summary>
 
-\`\`\`text
+${fence}text
 $test_output
-\`\`\`
+${fence}
+
 </details>
 EOF
 
