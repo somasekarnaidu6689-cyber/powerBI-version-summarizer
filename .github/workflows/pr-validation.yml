@@ -5,178 +5,215 @@ on:
     types: [opened, reopened, synchronize, edited]
 
 jobs:
-  validate:
+  detect:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
       contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_changed: ${{ steps.detect.outputs.any_changed }}
 
     steps:
-      - name: Checkout PR branch (new version)
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r pbix_diff/requirements.txt
-
-      - name: Determine changed files
-        id: changed
+      - name: Detect changed PowerBI projects
+        id: detect
         shell: bash
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
-          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
-          echo "$changed" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "Changed files:"
+          echo "$changed"
 
-          if echo "$changed" | grep -E '\.pbip($|/)|\.SemanticModel/|powerBi/' >/dev/null; then
-            echo "pbip_changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "pbip_changed=false" >> $GITHUB_OUTPUT
+          # Find all unique powerBi parent directories that changed
+          # Matches any path like: <anything>/powerBi/<anything>
+          # Extracts the project root (the folder containing powerBi/)
+          projects=$(echo "$changed" \
+            | grep -E '.+/powerBi/' \
+            | sed 's|/powerBi/.*||' \
+            | sort -u)
+
+          # Also handle powerBi/ at the repo root (no parent folder)
+          if echo "$changed" | grep -E '^powerBi/' >/dev/null 2>&1; then
+            projects=$(printf "%s\n." "$projects" | sort -u)
           fi
+
+          echo "Changed projects:"
+          echo "$projects"
+
+          if [ -z "$projects" ]; then
+            echo "any_changed=false" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+          else
+            # Build JSON matrix: [{"project":"ProjectAlpha"},{"project":"."}]
+            json=$(echo "$projects" | jq -R '{project: .}' | jq -sc '{include: .}')
+            echo "any_changed=true" >> $GITHUB_OUTPUT
+            echo "matrix=$json" >> $GITHUB_OUTPUT
+          fi
+
+  validate:
+    needs: detect
+    if: needs.detect.outputs.any_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    strategy:
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull PBIP diff Docker image
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
+
+      - name: Extract old version from base branch
+        shell: bash
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+
+          PROJECT="${{ matrix.project }}"
+          PBIP_FOLDER="$PROJECT/powerBi"
+          # Handle root-level powerBi/ (project == ".")
+          if [ "$PROJECT" = "." ]; then
+            PBIP_FOLDER="powerBi"
+          fi
+
+          mkdir -p /tmp/pbip_old
+          git --work-tree=/tmp/pbip_old checkout origin/${{ github.base_ref }} -- "$PBIP_FOLDER" || {
+            echo "Folder $PBIP_FOLDER not found in base branch — this is a new project."
+            echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
+          }
+
+      - name: Run PBIP diff via Docker
+        id: diff
+        shell: bash
+        run: |
+          PROJECT="${{ matrix.project }}"
+          PBIP_FOLDER="powerBi"
+          if [ "$PROJECT" != "." ]; then
+            PBIP_FOLDER="$PROJECT/powerBi"
+          fi
+
+          if [ "${IS_NEW_PROJECT}" = "true" ]; then
+            echo "Skipping diff — no base branch version found for $PBIP_FOLDER"
+            echo "NEW PROJECT: No previous version to compare against." > results/diff-output.txt
+            mkdir -p results
+            exit 0
+          fi
+
+          OLD_PBIP=$(find /tmp/pbip_old/$PBIP_FOLDER -name "*.pbip" 2>/dev/null | head -1)
+          NEW_PBIP=$(find ./$PBIP_FOLDER -name "*.pbip" 2>/dev/null | head -1)
+
+          if [ -z "$OLD_PBIP" ]; then
+            echo "No .pbip file found in base branch for $PBIP_FOLDER"
+            exit 0
+          fi
+          if [ -z "$NEW_PBIP" ]; then
+            echo "No .pbip file found in PR branch for $PBIP_FOLDER"
+            exit 0
+          fi
+
+          OLD_DIR=$(dirname "$OLD_PBIP")
+          NEW_DIR=$(dirname "$NEW_PBIP")
+
+          echo "Running diff: OLD=$OLD_DIR  NEW=$NEW_DIR"
+          mkdir -p results
+
+          # Mount repo root and /tmp into the container so both paths are accessible
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "/tmp/pbip_old:/tmp/pbip_old" \
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+            --old "/tmp/pbip_old/$PBIP_FOLDER" \
+            --new "/workspace/$PBIP_FOLDER" \
+            2>&1 | tee results/diff-output.txt
 
       - name: Run unit tests
         id: tests
         shell: bash
         run: |
           mkdir -p results
-          set -o pipefail
-          python -m unittest discover -s pbix_diff -p 'test_*.py' 2>&1 | tee results/test-output.txt
-          echo "status=$?" >> $GITHUB_OUTPUT
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            --entrypoint python \
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+            -m unittest discover -s pbix_diff -p 'test_*.py' \
+            2>&1 | tee results/test-output.txt
+          echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
-
-      - name: Extract old version of powerBi folder from base branch
-        if: steps.changed.outputs.pbip_changed == 'true'
-        shell: bash
-        run: |
-          mkdir -p /tmp/pbip_old
-          git fetch origin ${{ github.base_ref }} --depth=1
-          # Checkout just the powerBi folder from the base branch into a temp location
-          git --work-tree=/tmp/pbip_old checkout origin/${{ github.base_ref }} -- powerBi
-          echo "Old powerBi folder contents:"
-          ls /tmp/pbip_old/powerBi/
-
-      - name: Run PBIP diff
-        id: diff
-        if: steps.changed.outputs.pbip_changed == 'true'
-        shell: bash
-        run: |
-          mkdir -p results
-          # New version = current PR checkout (./powerBi)
-          # Old version = base branch snapshot (/tmp/pbip_old/powerBi)
-          OLD_PBIP=$(find /tmp/pbip_old/powerBi -name "*.pbip" | head -1)
-          NEW_PBIP=$(find ./powerBi -name "*.pbip" | head -1)
-
-          if [ -z "$OLD_PBIP" ]; then
-            echo "diff_output=No .pbip file found in base branch powerBi folder." >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          if [ -z "$NEW_PBIP" ]; then
-            echo "diff_output=No .pbip file found in PR powerBi folder." >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          echo "Old PBIP: $OLD_PBIP"
-          echo "New PBIP: $NEW_PBIP"
-
-          OLD_DIR=$(dirname "$OLD_PBIP")
-          NEW_DIR=$(dirname "$NEW_PBIP")
-
-          python pbix_diff/run.py --old "$OLD_DIR" --new "$NEW_DIR" 2>&1 | tee results/diff-output.txt
-          echo "diff_exit=$?" >> $GITHUB_OUTPUT
 
       - name: Generate PR comment
         shell: bash
         run: |
-          python - <<PYEOF
-          import os
-          import textwrap
+          python3 - <<PYEOF
+          import os, textwrap
 
-          status        = os.environ.get("STATUS", "1")
-          pbip_changed  = os.environ.get("PBIP_CHANGED", "false")
-          changed_files = os.environ.get("CHANGED_FILES", "")
+          project      = os.environ.get("PROJECT", ".")
+          status       = os.environ.get("STATUS", "1")
+
+          label = "root powerBi folder" if project == "." else project
 
           with open("results/test-output.txt") as f:
               test_output = f.read()
 
-          diff_output = ""
-          diff_section = ""
-          if pbip_changed == "true":
-              try:
-                  with open("results/diff-output.txt") as f:
-                      diff_output = f.read()
-              except FileNotFoundError:
-                  diff_output = "Diff was not run or produced no output."
+          try:
+              with open("results/diff-output.txt") as f:
+                  diff_output = f.read()
+          except FileNotFoundError:
+              diff_output = "Diff was not run."
 
-              diff_section = f"""
+          result = "✅ All tests passed" if status == "0" else "❌ Some tests failed"
+
+          body = f"""### PBIP Validation — `{label}`
+
+          **Status:** {result}
+
           <details>
-          <summary>PBIP diff report</summary>
+          <summary>📊 PBIP diff report</summary>
 
           \`\`\`
           {diff_output}
           \`\`\`
 
           </details>
-          """
 
-          result    = "✅ All tests passed"    if status == "0" else "❌ Some tests failed"
-          pbip_note = ("⚠️ PBIP-related files were detected in this PR — diff report below."
-                       if pbip_changed == "true"
-                       else "ℹ️ No PBIP-related files were detected in this PR.")
-
-          body = f"""### GitHub PR Validation
-
-          **Status:** {result}
-          **PBIP detection:** {pbip_note}
-          {diff_section}
           <details>
-          <summary>Changed files</summary>
+          <summary>🧪 Unit test output</summary>
 
-          \`\`\`text
-          {changed_files}
           \`\`\`
-
-          </details>
-
-          <details>
-          <summary>Unit test output</summary>
-
-          \`\`\`text
           {test_output}
           \`\`\`
 
           </details>
           """
 
-          body = textwrap.dedent(body)
-
           os.makedirs("results", exist_ok=True)
           with open("results/comment.txt", "w") as f:
-              f.write(body)
+              f.write(textwrap.dedent(body))
           PYEOF
         env:
+          PROJECT: ${{ matrix.project }}
           STATUS: ${{ steps.tests.outputs.status }}
-          PBIP_CHANGED: ${{ steps.changed.outputs.pbip_changed }}
-          CHANGED_FILES: ${{ steps.changed.outputs.changed_files }}
 
-      - name: Find existing PR comment
+      - name: Find existing PR comment for this project
         uses: peter-evans/find-comment@v3
         id: find-comment
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: github-actions[bot]
-          body-includes: GitHub PR Validation
+          body-includes: "PBIP Validation — `${{ matrix.project == '.' && 'root powerBi folder' || matrix.project }}`"
 
-      - name: Comment on pull request
+      - name: Post or update PR comment
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
