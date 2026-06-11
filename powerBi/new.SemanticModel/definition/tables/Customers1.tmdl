@@ -134,6 +134,14 @@ table Customers1
 
 		annotation SummarizationSetBy = Automatic
 
+	measure AvgAnnualIncome = AVERAGE( Customers1[AnnualIncome] )
+	measure TotalAnnualIncome = SUM( Customers1[AnnualIncome] )
+	measure CustomerCount = DISTINCTCOUNT( Customers1[CustomerID] )
+	measure AvgAge = AVERAGE( Customers1[Age] )
+	measure TotalChildren_Sum = SUM( Customers1[TotalChildren] )
+
+	annotation PBI_ResultType = Table
+
 	partition Customers1 = m
 		mode: import
 		source =
@@ -144,5 +152,4 @@ table Customers1
 				in
 				    #"Changed Type"
 
-	annotation PBI_ResultType = Table
 

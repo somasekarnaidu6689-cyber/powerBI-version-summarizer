@@ -1,3 +1,4 @@
+# .github/workflows/pr-validation.yml
 name: PBIP PR Validation
 
 on:
@@ -29,29 +30,20 @@ jobs:
           echo "Changed files:"
           echo "$changed"
 
-          # Find all .pbip files that exist anywhere in the repo (PR branch)
-          # A .pbip file's parent directory IS the project root
-          all_pbip_dirs=$(find . -name "*.pbip" | sed 's|^\./||' | xargs -I{} dirname {} | sort -u)
-
-          echo "All PBIP project dirs in PR branch:"
-          echo "$all_pbip_dirs"
-
-          # Keep only those whose directory tree has any changed file
+          # Find all folders containing a .pbip file in the PR branch
+          # These are the project roots — no hardcoding of folder names
           matched_projects=""
-          while IFS= read -r pbip_dir; do
-            # Check if any changed file starts with this project dir
-            if echo "$changed" | grep -q "^${pbip_dir}/"; then
-              matched_projects="$matched_projects"$'\n'"$pbip_dir"
+          while IFS= read -r pbip_file; do
+            project_dir=$(dirname "$pbip_file" | sed 's|^\./||')
+            # Check if any changed file lives inside this project folder
+            if echo "$changed" | grep -q "^${project_dir}/"; then
+              matched_projects="$matched_projects"$'\n'"$project_dir"
             fi
-          done <<< "$all_pbip_dirs"
-
-          # Also check if .pbip file itself changed
-          while IFS= read -r pbip_dir; do
-            pbip_file=$(find "./$pbip_dir" -maxdepth 1 -name "*.pbip" | head -1 | sed 's|^\./||')
-            if echo "$changed" | grep -qF "$pbip_file"; then
-              matched_projects="$matched_projects"$'\n'"$pbip_dir"
+            # Also check if the .pbip file itself changed
+            if echo "$changed" | grep -qF "${pbip_file#./}"; then
+              matched_projects="$matched_projects"$'\n'"$project_dir"
             fi
-          done <<< "$all_pbip_dirs"
+          done < <(find . -name "*.pbip" -not -path '*/.git/*')
 
           # Deduplicate
           matched_projects=$(echo "$matched_projects" | grep -v '^$' | sort -u)
@@ -86,30 +78,49 @@ jobs:
           fetch-depth: 0
 
       - name: Pull PBIP diff Docker image
+        id: pull
+        run: docker pull ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
+        continue-on-error: true
+
+      - name: Install Python deps (fallback if Docker unavailable)
+        if: steps.pull.outcome == 'failure'
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
+          pip install -r pbix_diff/requirements.txt
+          echo "USE_DOCKER=false" >> $GITHUB_ENV
+
+      - name: Set docker flag
+        if: steps.pull.outcome == 'success'
+        run: echo "USE_DOCKER=true" >> $GITHUB_ENV
 
       - name: Extract old version from base branch
         shell: bash
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
 
-          PBIP_DIR="${{ matrix.project }}"
+          PROJECT_DIR="${{ matrix.project }}"
           mkdir -p /tmp/pbip_old
 
-          git --work-tree=/tmp/pbip_old checkout origin/${{ github.base_ref }} -- "$PBIP_DIR" 2>/dev/null && {
-            echo "IS_NEW_PROJECT=false" >> $GITHUB_ENV
-            echo "Checked out old: $PBIP_DIR"
-            ls /tmp/pbip_old/$PBIP_DIR/
-          } || {
-            echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
-            echo "No base branch version found — new project."
-          }
+          if git --work-tree=/tmp/pbip_old \
+                 checkout origin/${{ github.base_ref }} -- "$PROJECT_DIR" 2>/dev/null; then
 
-      - name: Run PBIP diff via Docker
+            # Verify there is actually a .pbip file in the checked-out folder
+            old_pbip=$(find /tmp/pbip_old/$PROJECT_DIR -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+            if [ -n "$old_pbip" ]; then
+              echo "IS_NEW_PROJECT=false" >> $GITHUB_ENV
+              echo "Old project found: $old_pbip"
+            else
+              echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
+              echo "Folder exists in base branch but no .pbip marker — treating as new project."
+            fi
+          else
+            echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
+            echo "Project folder not found in base branch — this is a new project."
+          fi
+
+      - name: Run PBIP diff
         shell: bash
         run: |
-          PBIP_DIR="${{ matrix.project }}"
+          PROJECT_DIR="${{ matrix.project }}"
           mkdir -p results
 
           if [ "${IS_NEW_PROJECT}" = "true" ]; then
@@ -117,37 +128,72 @@ jobs:
             exit 0
           fi
 
-          OLD_PBIP=$(find /tmp/pbip_old/$PBIP_DIR -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
-          NEW_PBIP=$(find ./$PBIP_DIR -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+          OLD_DIR="/tmp/pbip_old/$PROJECT_DIR"
+          NEW_DIR="./$PROJECT_DIR"
 
-          if [ -z "$OLD_PBIP" ] || [ -z "$NEW_PBIP" ]; then
-            echo "Could not locate .pbip file in old or new — skipping diff." > results/diff-output.txt
+          # Confirm both sides have a .pbip marker before running
+          old_pbip=$(find "$OLD_DIR" -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+          new_pbip=$(find "$NEW_DIR" -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+
+          if [ -z "$old_pbip" ]; then
+            echo "No .pbip found in base branch at $OLD_DIR" > results/diff-output.txt
+            exit 0
+          fi
+          if [ -z "$new_pbip" ]; then
+            echo "No .pbip found in PR branch at $NEW_DIR" > results/diff-output.txt
             exit 0
           fi
 
-          echo "OLD: $OLD_PBIP"
-          echo "NEW: $NEW_PBIP"
+          echo "Comparing same project:"
+          echo "  OLD .pbip: $old_pbip"
+          echo "  NEW .pbip: $new_pbip"
 
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -v "/tmp/pbip_old:/tmp/pbip_old" \
-            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
-            --old "/tmp/pbip_old/$PBIP_DIR" \
-            --new "/workspace/$PBIP_DIR" \
-            2>&1 | tee results/diff-output.txt
+          if [ "$USE_DOCKER" = "true" ]; then
+            docker run --rm \
+              -v "${{ github.workspace }}:/workspace" \
+              -v "/tmp/pbip_old:/tmp/pbip_old" \
+              ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+              --old "$OLD_DIR" \
+              --new "/workspace/$PROJECT_DIR" \
+              2>&1 | tee results/diff-output.txt
+          else
+            python pbix_diff/run.py \
+              --old "$OLD_DIR" \
+              --new "$NEW_DIR" \
+              2>&1 | tee results/diff-output.txt
+          fi
 
       - name: Run unit tests
         id: tests
         shell: bash
         run: |
           mkdir -p results
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            --entrypoint python \
-            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
-            -m unittest discover -s pbix_diff -p 'test_*.py' \
-            2>&1 | tee results/test-output.txt
+
+          # Dynamically find a SemanticModel with a complete definition/ folder
+          # to use as the test fixture — no hardcoded paths
+          TEST_SM=$(find . -type d -name "*.SemanticModel" \
+                      -not -path '*/.git/*' \
+                      -not -path '*/tmp/*' \
+                    | while read -r sm; do
+                        [ -d "$sm/definition" ] && echo "$sm" && break
+                      done)
+
+          echo "Using SemanticModel for tests: $TEST_SM"
+
+          if [ "$USE_DOCKER" = "true" ]; then
+            docker run --rm \
+              -v "${{ github.workspace }}:/workspace" \
+              -w /workspace \
+              -e "TEST_SEMANTIC_MODEL=$TEST_SM" \
+              --entrypoint python \
+              ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+              -m unittest discover -s pbix_diff -p 'test_*.py' \
+              2>&1 | tee results/test-output.txt
+          else
+            TEST_SEMANTIC_MODEL="$TEST_SM" \
+            python -m unittest discover -s pbix_diff -p 'test_*.py' \
+              2>&1 | tee results/test-output.txt
+          fi
           echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
@@ -157,7 +203,7 @@ jobs:
           python3 - <<PYEOF
           import os, textwrap
 
-          project = os.environ.get("PROJECT", "unknown")
+          project = os.environ.get("PROJECT", "").strip() or "powerBi"
           status  = os.environ.get("STATUS", "1")
 
           with open("results/test-output.txt") as f:

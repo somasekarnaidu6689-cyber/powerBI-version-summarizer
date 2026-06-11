@@ -33,6 +33,7 @@ jobs:
         with:
           context: .
           push: true
+          no-cache: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
             ghcr.io/${{ github.repository_owner }}/pbip-diff:${{ github.ref_name }}
