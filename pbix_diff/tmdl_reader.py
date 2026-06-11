@@ -20,7 +20,14 @@ def read_semantic_model(semantic_model_dir: Path) -> dict:
     definition_dir = semantic_model_dir / "definition"
     if not definition_dir.exists():
         print(f"[tmdl_reader] WARNING: definition/ not found in {semantic_model_dir}")
-        return {}
+        # Return full skeleton so callers don't get KeyError on missing keys
+        return {
+            "tables":        {},
+            "relationships": [],
+            "roles":         [],
+            "cultures":      [],
+            "model_meta":    {},
+        }
 
     result = {
         "tables":        {},
