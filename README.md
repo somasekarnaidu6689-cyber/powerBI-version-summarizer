@@ -104,6 +104,8 @@ Prints the final summary to the console.
 
 Provides optional AI summary generation using Groq, but this module is not currently invoked by `pbix_diff/run.py`.
 
+When enabled, AI summarization is an assistive output only and should not be treated as definitive. Data transmitted to Groq is subject to Groq's service terms; keep `GROQ_API_KEY` confidential, avoid sending sensitive production data unless approved by your privacy policy, and use AI output as a companion to deterministic diff results.
+
 ## Configuration
 
 The repository loads environment values from `.env` via `pbix_diff/config.py`.
@@ -123,6 +125,8 @@ Optional AI-related keys exist in `.env.example` but are not currently wired int
 
 - `ENABLE_AI_SUMMARY`
 - `GROQ_API_KEY`
+
+Because AI summarization is disabled by default, normal runs do not transmit data to external services. If you enable it, store the API key securely and treat generated AI output as an assistive summary rather than an authoritative decision.
 
 ## How to run
 
@@ -155,6 +159,33 @@ python .\pbix_diff\run.py --old "powerBi/v1" --new "powerBi/v2"
 - The tool prints a console summary only.
 - No HTML report generation is used in the current workflow.
 
+### Output handling & retention
+
+We resolved previous ambiguity about artifact storage and retention by making the PR validation workflow produce the canonical CI output as a PR comment (no persistent local HTML artifacts by default). For teams that require persistent artifacts, the workflow can be configured to upload CI artifacts to GitHub Actions with a repository-controlled retention policy.
+
+- CI output destination: PR comment (default) and optional GitHub Actions artifact uploads (configurable in the workflow).
+- Retention and access control: use GitHub repository settings to set artifact retention days and access scope; artifacts are available only to users with repository access and subject to GitHub permissions.
+- Security: do not enable AI summarization or external uploads unless required; API keys (e.g. `GROQ_API_KEY`) must be stored in GitHub Secrets and never committed to the repository.
+
+If you want persistent downloadable reports, enable the artifact upload step in `.github/workflows/pr-validation.yml` (example: `actions/upload-artifact@v4`) and configure the `retention-days` option.
+
+### Dependency management & reproducibility
+
+We improved reproducibility and installation guidance:
+
+- Pinned core dependencies: `pbix_diff/requirements.txt` pins the main libraries used by the tool (e.g. `deepdiff==9.1.0`, `ijson==3.5.0`). Review and pin any additional dependencies before releasing.
+- Virtual environment guidance: prefer running the tool inside a Python virtual environment. Example:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+python -m pip install -r pbix_diff/requirements.txt
+```
+
+- Docker image: a `docker-publish.yml` workflow is included to build and publish an image to GHCR for fully reproducible CI runs. Use the published image in your workflow (the PR validation workflow already attempts to pull `ghcr.io/${{ github.repository_owner }}/pbip-diff:latest` and falls back to installing dependencies when Docker is unavailable).
+
+- Recommended release practice: create a lightweight `Dockerfile` (if not present) and publish a versioned image; use the image tag as the required CI status check to ensure reproducibility across runs.
+
 ## GitHub PR Validation
 
 A PR validation workflow exists in `.github/workflows/pr-validation.yml`.
@@ -168,13 +199,95 @@ It:
 - runs unit tests
 - posts or updates a PR comment with results
 
-<img width="1352" height="633" alt="Screenshot 2026-06-11 222341" src="https://github.com/user-attachments/assets/68c686c3-c325-4bed-8ebb-6cefdd203452" /><br>
+## Branch protection enforcement
 
-<img width="1353" height="633" alt="Screenshot 2026-06-11 222404" src="https://github.com/user-attachments/assets/324321bb-cb64-4f97-bca1-19a7ace64bad" /><br>
+The workflow itself does not block merges; GitHub branch protection rules must be configured to enforce PR approval and required status checks.
 
-<img width="1352" height="578" alt="Screenshot 2026-06-11 222420" src="https://github.com/user-attachments/assets/c64c08d0-a7d6-40ed-9def-9e05a3b2c1e7" /><br>
+Recommended branch protection settings for your target branch (`main`, `main-v2`, etc.):
 
+- Require a pull request before merging
+- Require at least one approval
+- Require status checks to pass before merging
+- Add the workflow jobs `detect` and `validate` as required checks
+- For matrix-based validate jobs, enable **Require all matrix jobs to pass** or add the individual generated job names after the first run
+- Require branches to be up to date before merging
+- Do not allow bypassing these settings, including for admins
 
+With those rules in place, a PR is blocked until:
+
+- the `detect` and `validate` checks complete successfully
+- the PR has the required approvals
+- the branch is up to date with the target branch
+
+## Baseline strategy
+
+The PR workflow compares the PR branch against the base branch HEAD by default.
+
+Manual runs triggered via `workflow_dispatch` support additional comparison strategies configured through inputs in `.github/workflows/pr-validation.yml`:
+
+- `base_branch` — default for normal PR review; compare against the branch the PR targets
+- `tag` — compare against a named release tag such as `v1.0.0`
+- `commit` — compare against a specific commit SHA
+- `branch` — compare against another branch such as `release/2024-Q4`
+
+For automated PR validation, the workflow uses `base_branch` and ignores the manual-only inputs.
+
+## Scope of comparison
+
+### What is compared
+
+**Semantic model — tables**
+- added and removed tables
+
+**Semantic model — columns**
+- added, removed, or modified columns per table
+
+**Semantic model — measures**
+- changed DAX expressions, format strings, and descriptions
+
+**Semantic model — relationships**
+- added, removed, or changed cardinality and cross-filter behavior
+
+**Semantic model — roles (RLS/OLS)**
+- added, removed, or changed row-level or object-level security rules
+
+**Report — pages**
+- added, removed, or renamed pages
+
+**Report — visuals**
+- added, removed, or modified visuals per page
+
+**Report — filters**
+- changed report, page, or visual filters
+
+**Report — slicers**
+- changed slicer configurations
+
+**Layout — canvas**
+- canvas size and background changes
+
+**Layout — bookmarks**
+- added, removed, or changed bookmarks
+
+**Layout — z-order**
+- visual stacking order changes
+
+### What is not compared
+
+The following items are not detectable from repository PBIP files and must be reviewed separately in Power BI Service or deployment configuration:
+
+- Refresh schedules (service-side metadata)
+- Data gateway configuration (service-side setting)
+- Workspace or deployment pipeline settings (service-side)
+- Row-level security membership (only role definitions are stored in PBIP)
+- Custom visuals (`.pbiviz` packages are binary blobs, not diffed as text)
+- Themes applied at the service level (only embedded theme JSON is compared)
+- Dataflow or datamart dependencies (not stored in PBIP files)
+- Incremental refresh policies (partially in TMDL, but service-side windows and behavior are not fully captured)
+- Report subscriptions and alerts (service-side only)
+- Endorsement or certification status (service-side metadata)
+
+If any of these areas are critical for review, verify them manually in the Power BI Service before approving the PR.
 
 ## Notes
 
