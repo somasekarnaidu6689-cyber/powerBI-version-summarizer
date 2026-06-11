@@ -8,6 +8,7 @@ on:
     paths:
       - 'pbix_diff/**'
       - 'Dockerfile'
+  workflow_dispatch:        # ← add this so you can trigger it manually right now
 
 jobs:
   build:
@@ -32,4 +33,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:${{ github.ref_name }}
