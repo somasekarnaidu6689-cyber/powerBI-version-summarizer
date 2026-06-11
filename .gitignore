@@ -1,5 +1,5 @@
 **/.pbi/localSettings.json
 **/.pbi/cache.abf
 
-pbix_diff/config.py
-pbix_diff/config.py
+# Local environment variables
+.env

@@ -1,0 +1,223 @@
+name: PBIP PR Validation
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_changed: ${{ steps.detect.outputs.any_changed }}
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed PowerBI projects
+        id: detect
+        shell: bash
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+
+          echo "Changed files:"
+          echo "$changed"
+
+          # Find all .pbip files that exist anywhere in the repo (PR branch)
+          # A .pbip file's parent directory IS the project root
+          all_pbip_dirs=$(find . -name "*.pbip" | sed 's|^\./||' | xargs -I{} dirname {} | sort -u)
+
+          echo "All PBIP project dirs in PR branch:"
+          echo "$all_pbip_dirs"
+
+          # Keep only those whose directory tree has any changed file
+          matched_projects=""
+          while IFS= read -r pbip_dir; do
+            # Check if any changed file starts with this project dir
+            if echo "$changed" | grep -q "^${pbip_dir}/"; then
+              matched_projects="$matched_projects"$'\n'"$pbip_dir"
+            fi
+          done <<< "$all_pbip_dirs"
+
+          # Also check if .pbip file itself changed
+          while IFS= read -r pbip_dir; do
+            pbip_file=$(find "./$pbip_dir" -maxdepth 1 -name "*.pbip" | head -1 | sed 's|^\./||')
+            if echo "$changed" | grep -qF "$pbip_file"; then
+              matched_projects="$matched_projects"$'\n'"$pbip_dir"
+            fi
+          done <<< "$all_pbip_dirs"
+
+          # Deduplicate
+          matched_projects=$(echo "$matched_projects" | grep -v '^$' | sort -u)
+
+          echo "Matched changed projects:"
+          echo "$matched_projects"
+
+          if [ -z "$matched_projects" ]; then
+            echo "any_changed=false" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
+          else
+            json=$(echo "$matched_projects" | jq -R '{project: .}' | jq -sc '{include: .}')
+            echo "any_changed=true" >> $GITHUB_OUTPUT
+            echo "matrix=$json" >> $GITHUB_OUTPUT
+          fi
+
+  validate:
+    needs: detect
+    if: needs.detect.outputs.any_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    strategy:
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull PBIP diff Docker image
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
+
+      - name: Extract old version from base branch
+        shell: bash
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+
+          PBIP_DIR="${{ matrix.project }}"
+          mkdir -p /tmp/pbip_old
+
+          git --work-tree=/tmp/pbip_old checkout origin/${{ github.base_ref }} -- "$PBIP_DIR" 2>/dev/null && {
+            echo "IS_NEW_PROJECT=false" >> $GITHUB_ENV
+            echo "Checked out old: $PBIP_DIR"
+            ls /tmp/pbip_old/$PBIP_DIR/
+          } || {
+            echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
+            echo "No base branch version found — new project."
+          }
+
+      - name: Run PBIP diff via Docker
+        shell: bash
+        run: |
+          PBIP_DIR="${{ matrix.project }}"
+          mkdir -p results
+
+          if [ "${IS_NEW_PROJECT}" = "true" ]; then
+            echo "New project — no previous version to diff against." > results/diff-output.txt
+            exit 0
+          fi
+
+          OLD_PBIP=$(find /tmp/pbip_old/$PBIP_DIR -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+          NEW_PBIP=$(find ./$PBIP_DIR -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+
+          if [ -z "$OLD_PBIP" ] || [ -z "$NEW_PBIP" ]; then
+            echo "Could not locate .pbip file in old or new — skipping diff." > results/diff-output.txt
+            exit 0
+          fi
+
+          echo "OLD: $OLD_PBIP"
+          echo "NEW: $NEW_PBIP"
+
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "/tmp/pbip_old:/tmp/pbip_old" \
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+            --old "/tmp/pbip_old/$PBIP_DIR" \
+            --new "/workspace/$PBIP_DIR" \
+            2>&1 | tee results/diff-output.txt
+
+      - name: Run unit tests
+        id: tests
+        shell: bash
+        run: |
+          mkdir -p results
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            --entrypoint python \
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+            -m unittest discover -s pbix_diff -p 'test_*.py' \
+            2>&1 | tee results/test-output.txt
+          echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Generate PR comment
+        shell: bash
+        run: |
+          python3 - <<PYEOF
+          import os, textwrap
+
+          project = os.environ.get("PROJECT", "unknown")
+          status  = os.environ.get("STATUS", "1")
+
+          with open("results/test-output.txt") as f:
+              test_output = f.read()
+          try:
+              with open("results/diff-output.txt") as f:
+                  diff_output = f.read()
+          except FileNotFoundError:
+              diff_output = "Diff was not run."
+
+          result = "✅ All tests passed" if status == "0" else "❌ Some tests failed"
+
+          body = f"""### PBIP Validation — `{project}`
+
+          **Status:** {result}
+
+          <details>
+          <summary>📊 PBIP diff report</summary>
+
+          \`\`\`
+          {diff_output}
+          \`\`\`
+
+          </details>
+
+          <details>
+          <summary>🧪 Unit test output</summary>
+
+          \`\`\`
+          {test_output}
+          \`\`\`
+
+          </details>
+          """
+
+          os.makedirs("results", exist_ok=True)
+          with open("results/comment.txt", "w") as f:
+              f.write(textwrap.dedent(body))
+          PYEOF
+        env:
+          PROJECT: ${{ matrix.project }}
+          STATUS: ${{ steps.tests.outputs.status }}
+
+      - name: Find existing PR comment for this project
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: "PBIP Validation — `${{ matrix.project }}`"
+
+      - name: Post or update PR comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          body-file: results/comment.txt
+          edit-mode: replace
+
+      - name: Fail job if tests failed
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
