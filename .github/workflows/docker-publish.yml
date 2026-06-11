@@ -2,7 +2,9 @@ name: Build and Push PBIP Diff Image
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - main-v2
     paths:
       - 'pbix_diff/**'
       - 'Dockerfile'
