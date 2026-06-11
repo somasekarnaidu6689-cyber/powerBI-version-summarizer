@@ -1,37 +1,17 @@
-from pathlib import Path
-from datetime import datetime
-from jinja2 import Environment, FileSystemLoader
-import config
-import os
+﻿from pathlib import Path
 
 
 # ─── Main Reporter ────────────────────────────────────────────
+
 def generate_report(
     model_results: dict,
     report_results: dict,
     layout_results: dict,
-    old_path: Path,
-    new_path: Path,
-    fmt: str,
-    duration_seconds: float = None,
-    ai_summary: dict = None
 ) -> None:
     """
-    Aggregates results from all comparators and produces:
-    1. Console summary
-    2. HTML report (via Jinja2)
+    Aggregates results from all comparators and prints a console summary.
     """
     print_summary(model_results, report_results, layout_results)
-    write_html(
-        model_results,
-        report_results,
-        layout_results,
-        old_path,
-        new_path,
-        fmt,
-        duration_seconds,
-        ai_summary or {}
-    )
 
 
 # ─── Console Summary ──────────────────────────────────────────
@@ -84,7 +64,6 @@ def print_summary(
 
     print("\n" + "=" * 52)
 
-    # No changes check
     total = _count_total_changes(model_results, report_results, layout_results)
     if total == 0:
         print("  ✅ No changes detected between the two versions.")
@@ -92,50 +71,6 @@ def print_summary(
         print(f"  ⚠️  Total changes detected: {total}")
 
     print("=" * 52 + "\n")
-
-
-# ─── HTML Report Writer ───────────────────────────────────────
-def write_html(
-    model_results: dict,
-    report_results: dict,
-    layout_results: dict,
-    old_path: Path,
-    new_path: Path,
-    fmt: str,
-    duration_seconds: float = None,
-    ai_summary: dict = None
-) -> None:
-    """
-    Renders the Jinja2 HTML template and writes the report
-    to the output path defined in config.
-    """
-    print(f"[reporter] Generating HTML report → {config.OUTPUT_HTML}")
-
-    # Load Jinja2 template from templates/ folder
-    BASE_DIR = Path(__file__).resolve().parent
-    env = Environment(loader=FileSystemLoader(str(BASE_DIR / "templates")))
-    template = env.get_template("report.html")
-
-    # Build context for the template
-    context = {
-        "generated_at":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "old_path":       str(old_path),
-        "new_path":       str(new_path),
-        "format":         fmt,
-        "environment":    config.ENVIRONMENT,
-        "duration":       f"{duration_seconds:.2f}s" if duration_seconds else "N/A",
-        "dbx_warning":    _should_warn_dbx(old_path, new_path),
-        "model":          model_results or {},
-        "report":         report_results or {},
-        "layout":         layout_results or {},
-        "ai_summary":     ai_summary or {},
-        "total_changes":  _count_total_changes(model_results, report_results, layout_results),
-    }
-
-    # Render and write
-    html_output = template.render(**context)
-    config.OUTPUT_HTML.write_text(html_output, encoding="utf-8")
-    print(f"[reporter] ✅ HTML report saved to: {config.OUTPUT_HTML}")
 
 
 # ─── Helpers ──────────────────────────────────────────────────
@@ -169,22 +104,3 @@ def _count_total_changes(
         total += len(layout_results.get("z_order", []))
 
     return total
-
-
-def _should_warn_dbx(old_path: Path, new_path: Path) -> str | None:
-    """
-    Returns a warning message if running on Databricks
-    with small files — better to run locally.
-    """
-    if config.ENVIRONMENT != "databricks" or not config.DBX_WARN_SMALL_FILES:
-        return None
-
-    old_mb = old_path.stat().st_size / (1024 * 1024)
-    new_mb = new_path.stat().st_size / (1024 * 1024)
-
-    if old_mb < 20 or new_mb < 20:
-        return (
-            f"⚠️ Files are small ({old_mb:.1f} MB / {new_mb:.1f} MB). "
-            f"Consider running locally to save Databricks credits."
-        )
-    return None

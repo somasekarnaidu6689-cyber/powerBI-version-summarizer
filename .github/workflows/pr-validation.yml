@@ -1,0 +1,101 @@
+name: PBIP PR Validation
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r pbix_diff/requirements.txt
+
+      - name: Determine changed files
+        id: changed
+        shell: bash
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$changed" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if echo "$changed" | grep -E '\.pbip($|/)|\.SemanticModel/|powerBi/' >/dev/null; then
+            echo "pbip_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "pbip_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run unit tests
+        id: tests
+        shell: bash
+        run: |
+          mkdir -p results
+          python -m unittest discover -s pbix_diff -p 'test_*.py' 2>&1 | tee results/test-output.txt
+          echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Generate PR comment
+        shell: bash
+        run: |
+          status="${{ steps.tests.outputs.status }}"
+          pbip_changed="${{ steps.changed.outputs.pbip_changed }}"
+          changed_files="${{ steps.changed.outputs.changed_files }}"
+
+          if [ "$status" = "0" ]; then
+            result="✅ All tests passed"
+          else
+            result="❌ Some tests failed"
+          fi
+
+          if [ "$pbip_changed" = "true" ]; then
+            pbip_note="PBIP-related files were detected in this PR."
+          else
+            pbip_note="No PBIP-related files were detected in this PR."
+          fi
+
+          cat > results/comment.txt <<EOF
+### GitHub PR Validation
+
+**Status:** $result
+**PBIP detection:** $pbip_note
+**Command:** \\`python -m unittest discover -s pbix_diff -p 'test_*.py'\\`
+**Exit code:** $status
+
+<details>
+<summary>Changed files</summary>
+
+\\`\\`\\`text
+$changed_files
+\\`\\`\\`
+</details>
+
+<details>
+<summary>Test output</summary>
+
+\\`\\`\\`text
+$(cat results/test-output.txt)
+\\`\\`\\`
+</details>
+EOF
+
+      - name: Comment on pull request
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: results/comment.txt
+          comment-id-file: results/pr-comment-id.txt

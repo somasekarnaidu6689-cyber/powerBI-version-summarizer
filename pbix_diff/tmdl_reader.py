@@ -2,6 +2,8 @@ import re
 import json
 from pathlib import Path
 
+ASSIGN_OP = r'[:=]'
+
 
 # ─── Main Reader ──────────────────────────────────────────────
 def read_semantic_model(semantic_model_dir: Path) -> dict:
@@ -156,10 +158,10 @@ def parse_relationships_tmdl(path: Path) -> list:
     for rel_id, rel_body in (m.groups() for m in blocks):
         rel = {"id": rel_id.strip()}
         for key, pattern in [
-            ("from",        r'fromColumn\s*=\s*(.+)'),
-            ("to",          r'toColumn\s*=\s*(.+)'),
-            ("cardinality", r'fromCardinality\s*=\s*(.+)'),
-            ("crossFilter", r'crossFilteringBehavior\s*=\s*(.+)'),
+            ("from",        rf'fromColumn\s*{ASSIGN_OP}\s*(.+)'),
+            ("to",          rf'toColumn\s*{ASSIGN_OP}\s*(.+)'),
+            ("cardinality", rf'fromCardinality\s*{ASSIGN_OP}\s*(.+)'),
+            ("crossFilter", rf'crossFilteringBehavior\s*{ASSIGN_OP}\s*(.+)'),
         ]:
             m = re.search(pattern, rel_body)
             if m:
@@ -192,7 +194,7 @@ def parse_roles_tmdl(path: Path) -> list:
             role_body, re.DOTALL
         )
         for tp in tp_blocks:
-            filter_expr = re.search(r'filterExpression\s*=\s*(.+)', tp.group(2))
+            filter_expr = re.search(rf'filterExpression\s*{ASSIGN_OP}\s*(.+)', tp.group(2))
             table_perms.append({
                 "table":      tp.group(1).strip(),
                 "filterExpr": filter_expr.group(1).strip() if filter_expr else None,
@@ -211,8 +213,8 @@ def parse_roles_tmdl(path: Path) -> list:
 def parse_model_tmdl(path: Path) -> dict:
     try:
         content = path.read_text(encoding="utf-8", errors="ignore")
-        compat  = re.search(r'compatibilityLevel\s*=\s*(\d+)', content)
-        culture = re.search(r'culture\s*=\s*(.+)',             content)
+        compat  = re.search(rf'compatibilityLevel\s*{ASSIGN_OP}\s*(\d+)', content)
+        culture = re.search(rf'culture\s*{ASSIGN_OP}\s*(.+)',             content)
         return {
             "compatibilityLevel": compat.group(1) if compat else None,
             "culture":            culture.group(1).strip() if culture else None,
@@ -236,8 +238,8 @@ def _extract_columns(content: str) -> list:
     ):
         col_name = match.group(1).strip()
         col_body = match.group(2)
-        dt  = re.search(r'dataType\s*=\s*(\w+)', col_body)
-        exp = re.search(r'expression\s*=\s*```(.*?)```', col_body, re.DOTALL)
+        dt  = re.search(rf'dataType\s*{ASSIGN_OP}\s*(\w+)', col_body)
+        exp = re.search(rf'expression\s*{ASSIGN_OP}\s*```(.*?)```', col_body, re.DOTALL)
         columns.append({
             "name":          col_name,
             "dataType":      dt.group(1) if dt else "unknown",
@@ -257,8 +259,8 @@ def _extract_measures(content: str) -> list:
         body = match.group(2)
         dax_block = re.search(r'```(.*?)```', body, re.DOTALL)
         dax = dax_block.group(1).strip() if dax_block else body.split('\n')[0].strip()
-        fmt = re.search(r'formatString\s*=\s*(.+)', body)
-        desc = re.search(r'description\s*=\s*\'?(.+?)\'?\s*\n', body)
+        fmt = re.search(rf'formatString\s*{ASSIGN_OP}\s*(.+)', body)
+        desc = re.search(rf'description\s*{ASSIGN_OP}\s*\'?(.+?)\'?\s*\n', body)
         measures.append({
             "name":          name,
             "dax":           dax,
@@ -276,9 +278,9 @@ def _extract_partitions(content: str) -> list:
     ):
         name = match.group(1).strip()
         body = match.group(2)
-        mode  = re.search(r'mode\s*=\s*(\w+)',              body)
-        query = re.search(r'source\s*```(.*?)```',           body, re.DOTALL)
-        qtype = re.search(r'type\s*=\s*(\w+)',               body)
+        mode  = re.search(rf'mode\s*{ASSIGN_OP}\s*(\w+)',              body)
+        query = re.search(rf'source\s*{ASSIGN_OP}\s*```(.*?)```',           body, re.DOTALL)
+        qtype = re.search(rf'type\s*{ASSIGN_OP}\s*(\w+)',               body)
         partitions.append({
             "name":        name,
             "mode":        mode.group(1)          if mode  else "unknown",
