@@ -67,28 +67,28 @@ jobs:
             pbip_note="No PBIP-related files were detected in this PR."
           fi
 
-          cat > results/comment.txt <<EOF
+          cat > results/comment.txt <<'EOF'
 ### GitHub PR Validation
 
 **Status:** $result
 **PBIP detection:** $pbip_note
-**Command:** \\`python -m unittest discover -s pbix_diff -p 'test_*.py'\\`
+**Command:** `python -m unittest discover -s pbix_diff -p 'test_*.py'`
 **Exit code:** $status
 
 <details>
 <summary>Changed files</summary>
 
-\\`\\`\\`text
+```text
 $changed_files
-\\`\\`\\`
+```
 </details>
 
 <details>
 <summary>Test output</summary>
 
-\\`\\`\\`text
+```text
 $(cat results/test-output.txt)
-\\`\\`\\`
+```
 </details>
 EOF
 
