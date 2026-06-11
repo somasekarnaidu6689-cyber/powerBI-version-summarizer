@@ -45,8 +45,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p results
+          set -o pipefail
           python -m unittest discover -s pbix_diff -p 'test_*.py' 2>&1 | tee results/test-output.txt
-          echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+          echo "status=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
 
       - name: Generate PR comment
         shell: bash
@@ -67,35 +69,51 @@ jobs:
             pbip_note="No PBIP-related files were detected in this PR."
           fi
 
-          cat > results/comment.txt <<'EOF'
+          test_output=$(cat results/test-output.txt)
+
+          # Unquoted EOF allows variable expansion
+          cat > results/comment.txt <<EOF
 ### GitHub PR Validation
 
 **Status:** $result
 **PBIP detection:** $pbip_note
-**Command:** `python -m unittest discover -s pbix_diff -p 'test_*.py'`
+**Command:** \`python -m unittest discover -s pbix_diff -p 'test_*.py'\`
 **Exit code:** $status
 
 <details>
 <summary>Changed files</summary>
 
-```text
+\`\`\`text
 $changed_files
-```
+\`\`\`
 </details>
 
 <details>
 <summary>Test output</summary>
 
-```text
-$(cat results/test-output.txt)
-```
+\`\`\`text
+$test_output
+\`\`\`
 </details>
 EOF
+
+      - name: Find existing PR comment
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: GitHub PR Validation
 
       - name: Comment on pull request
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
           body-file: results/comment.txt
-          comment-id-file: results/pr-comment-id.txt
+          edit-mode: replace
+
+      - name: Fail job if tests failed
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
