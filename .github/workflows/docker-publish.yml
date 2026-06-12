@@ -1,6 +1,14 @@
 name: Build and Push PBIP Diff Image
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'pbix_diff/**'
+      - 'Dockerfile'
+    types: [opened, synchronize, reopened]
+
   push:
     branches:
       - main
@@ -8,7 +16,8 @@ on:
     paths:
       - 'pbix_diff/**'
       - 'Dockerfile'
-  workflow_dispatch:        # ← add this so you can trigger it manually right now
+
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,7 +37,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      # On a PR → push a temp image tagged with the PR number.
+      # On a merge (push to main/main-v2) → push the real latest + branch tag.
+      - name: Build and push (PR — temp image)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          no-cache: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:temp
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:pr-${{ github.event.pull_request.number }}
+
+      - name: Build and push (merge — production image)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: docker/build-push-action@v5
         with:
           context: .
