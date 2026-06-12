@@ -1,18 +1,51 @@
-# .github/workflows/pr-validation.yml
 name: PBIP PR Validation
 
 on:
   pull_request:
     types: [opened, reopened, synchronize, edited]
+    paths:
+      - '**.pbip'
+      - '**.tmdl'
+      - '**.json'
+      - '**.bim'
+      - '**.pbix'
+      - '**.xml'
+
+  workflow_dispatch:
+    inputs:
+      baseline_strategy:
+        description: >
+          What to use as the OLD (baseline) version.
+          base_branch = the branch this PR targets (default for PRs).
+          tag         = a release tag, e.g. v1.0.0.
+          commit      = a specific commit SHA.
+          branch      = any other branch name.
+        required: true
+        default: base_branch
+        type: choice
+        options:
+          - base_branch
+          - tag
+          - commit
+          - branch
+      baseline_ref:
+        description: >
+          The ref to use as baseline when strategy is tag / commit / branch.
+          Leave empty when strategy is base_branch.
+        required: false
+        default: ''
 
 jobs:
+
+  # ── 1. Detect which PowerBI project folders changed ───────────────────────
   detect:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
-      matrix: ${{ steps.detect.outputs.matrix }}
-      any_changed: ${{ steps.detect.outputs.any_changed }}
+      matrix:       ${{ steps.detect.outputs.matrix }}
+      any_changed:  ${{ steps.detect.outputs.any_changed }}
+      baseline_ref: ${{ steps.resolve.outputs.baseline_ref }}
 
     steps:
       - name: Checkout PR branch
@@ -20,32 +53,59 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve baseline ref
+        id: resolve
+        shell: bash
+        run: |
+          strategy="${{ github.event.inputs.baseline_strategy || 'base_branch' }}"
+          override="${{ github.event.inputs.baseline_ref }}"
+
+          case "$strategy" in
+            base_branch)
+              ref="${{ github.base_ref || 'main' }}"
+              ;;
+            tag|commit|branch)
+              if [ -z "$override" ]; then
+                echo "ERROR: baseline_ref must be set when strategy is $strategy"
+                exit 1
+              fi
+              ref="$override"
+              ;;
+            *)
+              echo "ERROR: Unknown baseline_strategy: $strategy"
+              exit 1
+              ;;
+          esac
+
+          echo "Baseline strategy : $strategy"
+          echo "Baseline ref      : $ref"
+          echo "baseline_ref=$ref" >> $GITHUB_OUTPUT
+
       - name: Detect changed PowerBI projects
         id: detect
         shell: bash
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
+          BASELINE_REF="${{ steps.resolve.outputs.baseline_ref }}"
+          git fetch origin "$BASELINE_REF" --depth=1
+
+          changed=$(git diff --name-only "origin/$BASELINE_REF"...HEAD 2>/dev/null \
+                    || git diff --name-only "origin/$BASELINE_REF" HEAD \
+                    || true)
 
           echo "Changed files:"
           echo "$changed"
 
-          # Find all folders containing a .pbip file in the PR branch
-          # These are the project roots — no hardcoding of folder names
           matched_projects=""
           while IFS= read -r pbip_file; do
             project_dir=$(dirname "$pbip_file" | sed 's|^\./||')
-            # Check if any changed file lives inside this project folder
             if echo "$changed" | grep -q "^${project_dir}/"; then
               matched_projects="$matched_projects"$'\n'"$project_dir"
             fi
-            # Also check if the .pbip file itself changed
             if echo "$changed" | grep -qF "${pbip_file#./}"; then
               matched_projects="$matched_projects"$'\n'"$project_dir"
             fi
           done < <(find . -name "*.pbip" -not -path '*/.git/*')
 
-          # Deduplicate
           matched_projects=$(echo "$matched_projects" | grep -v '^$' | sort -u)
 
           echo "Matched changed projects:"
@@ -60,6 +120,7 @@ jobs:
             echo "matrix=$json" >> $GITHUB_OUTPUT
           fi
 
+  # ── 2. Validate each changed project ──────────────────────────────────────
   validate:
     needs: detect
     if: needs.detect.outputs.any_changed == 'true'
@@ -78,65 +139,54 @@ jobs:
           fetch-depth: 0
 
       - name: Pull PBIP diff Docker image
-        id: pull
-        run: docker pull ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
-        continue-on-error: true
+        run: docker pull ghcr.io/somasekarnaidu6689-cyber/pbip-diff:latest
 
-      - name: Install Python deps (fallback if Docker unavailable)
-        if: steps.pull.outcome == 'failure'
-        run: |
-          pip install -r pbix_diff/requirements.txt
-          echo "USE_DOCKER=false" >> $GITHUB_ENV
-
-      - name: Set docker flag
-        if: steps.pull.outcome == 'success'
-        run: echo "USE_DOCKER=true" >> $GITHUB_ENV
-
-      - name: Extract old version from base branch
+      - name: Extract baseline version
         shell: bash
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-
+          BASELINE_REF="${{ needs.detect.outputs.baseline_ref }}"
           PROJECT_DIR="${{ matrix.project }}"
+
+          git fetch origin "$BASELINE_REF" --depth=1
           mkdir -p /tmp/pbip_old
 
           if git --work-tree=/tmp/pbip_old \
-                 checkout origin/${{ github.base_ref }} -- "$PROJECT_DIR" 2>/dev/null; then
+                 checkout "origin/$BASELINE_REF" -- "$PROJECT_DIR" 2>/dev/null; then
 
-            # Verify there is actually a .pbip file in the checked-out folder
-            old_pbip=$(find /tmp/pbip_old/$PROJECT_DIR -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
+            old_pbip=$(find "/tmp/pbip_old/$PROJECT_DIR" -maxdepth 1 \
+                         -name "*.pbip" 2>/dev/null | head -1)
             if [ -n "$old_pbip" ]; then
               echo "IS_NEW_PROJECT=false" >> $GITHUB_ENV
-              echo "Old project found: $old_pbip"
+              echo "Baseline .pbip : $old_pbip"
             else
               echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
-              echo "Folder exists in base branch but no .pbip marker — treating as new project."
+              echo "Folder exists in baseline but no .pbip marker — treating as new project."
             fi
           else
             echo "IS_NEW_PROJECT=true" >> $GITHUB_ENV
-            echo "Project folder not found in base branch — this is a new project."
+            echo "Project not found at baseline ref '$BASELINE_REF' — this is a new project."
           fi
 
       - name: Run PBIP diff
         shell: bash
         run: |
           PROJECT_DIR="${{ matrix.project }}"
+          BASELINE_REF="${{ needs.detect.outputs.baseline_ref }}"
           mkdir -p results
 
           if [ "${IS_NEW_PROJECT}" = "true" ]; then
-            echo "New project — no previous version to diff against." > results/diff-output.txt
+            echo "New project — no baseline version to diff against." > results/diff-output.txt
             exit 0
           fi
 
           OLD_DIR="/tmp/pbip_old/$PROJECT_DIR"
           NEW_DIR="./$PROJECT_DIR"
 
-          # Confirm both sides have a .pbip marker before running
           old_pbip=$(find "$OLD_DIR" -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
           new_pbip=$(find "$NEW_DIR" -maxdepth 1 -name "*.pbip" 2>/dev/null | head -1)
 
           if [ -z "$old_pbip" ]; then
-            echo "No .pbip found in base branch at $OLD_DIR" > results/diff-output.txt
+            echo "No .pbip found in baseline at $OLD_DIR" > results/diff-output.txt
             exit 0
           fi
           if [ -z "$new_pbip" ]; then
@@ -144,24 +194,17 @@ jobs:
             exit 0
           fi
 
-          echo "Comparing same project:"
-          echo "  OLD .pbip: $old_pbip"
-          echo "  NEW .pbip: $new_pbip"
+          echo "Baseline ref : $BASELINE_REF"
+          echo "OLD .pbip    : $old_pbip"
+          echo "NEW .pbip    : $new_pbip"
 
-          if [ "$USE_DOCKER" = "true" ]; then
-            docker run --rm \
-              -v "${{ github.workspace }}:/workspace" \
-              -v "/tmp/pbip_old:/tmp/pbip_old" \
-              ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
-              --old "$OLD_DIR" \
-              --new "/workspace/$PROJECT_DIR" \
-              2>&1 | tee results/diff-output.txt
-          else
-            python pbix_diff/run.py \
-              --old "$OLD_DIR" \
-              --new "$NEW_DIR" \
-              2>&1 | tee results/diff-output.txt
-          fi
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "/tmp/pbip_old:/tmp/pbip_old" \
+            ghcr.io/somasekarnaidu6689-cyber/pbip-diff:latest \
+            --old "$OLD_DIR" \
+            --new "/workspace/$PROJECT_DIR" \
+            2>&1 | tee results/diff-output.txt
 
       - name: Run unit tests
         id: tests
@@ -169,31 +212,23 @@ jobs:
         run: |
           mkdir -p results
 
-          # Dynamically find a SemanticModel with a complete definition/ folder
-          # to use as the test fixture — no hardcoded paths
           TEST_SM=$(find . -type d -name "*.SemanticModel" \
                       -not -path '*/.git/*' \
                       -not -path '*/tmp/*' \
                     | while read -r sm; do
                         [ -d "$sm/definition" ] && echo "$sm" && break
                       done)
-
           echo "Using SemanticModel for tests: $TEST_SM"
 
-          if [ "$USE_DOCKER" = "true" ]; then
-            docker run --rm \
-              -v "${{ github.workspace }}:/workspace" \
-              -w /workspace \
-              -e "TEST_SEMANTIC_MODEL=$TEST_SM" \
-              --entrypoint python \
-              ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
-              -m unittest discover -s pbix_diff -p 'test_*.py' \
-              2>&1 | tee results/test-output.txt
-          else
-            TEST_SEMANTIC_MODEL="$TEST_SM" \
-            python -m unittest discover -s pbix_diff -p 'test_*.py' \
-              2>&1 | tee results/test-output.txt
-          fi
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "TEST_SEMANTIC_MODEL=$TEST_SM" \
+            --entrypoint python \
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+            -m unittest discover -s pbix_diff -p 'test_*.py' \
+            2>&1 | tee results/test-output.txt
+
           echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
@@ -203,8 +238,9 @@ jobs:
           python3 - <<PYEOF
           import os, textwrap
 
-          project = os.environ.get("PROJECT", "").strip() or "powerBi"
-          status  = os.environ.get("STATUS", "1")
+          project      = os.environ.get("PROJECT", "").strip() or "powerBi"
+          status       = os.environ.get("STATUS", "1")
+          baseline_ref = os.environ.get("BASELINE_REF", "base branch")
 
           with open("results/test-output.txt") as f:
               test_output = f.read()
@@ -214,14 +250,20 @@ jobs:
           except FileNotFoundError:
               diff_output = "Diff was not run."
 
-          result = "✅ All tests passed" if status == "0" else "❌ Some tests failed"
+          result = "All tests passed" if status == "0" else "Some tests failed"
 
-          body = f"""### PBIP Validation — `{project}`
+          body = f"""### PBIP Validation : \`{project}\`
 
           **Status:** {result}
+          **Baseline:** \`{baseline_ref}\`
+
+          > ! This diff covers semantic model (tables, columns, measures, relationships, roles),
+          > report (pages, visuals, filters, slicers) and layout (canvas, bookmarks, z-order).
+          > Items **not** compared: refresh schedules, gateways, custom visuals, service-side
+          > themes, dataflow dependencies, RLS membership, subscriptions. See PBIP_GOVERNANCE.md.
 
           <details>
-          <summary>📊 PBIP diff report</summary>
+          <summary>PBIP diff report</summary>
 
           \`\`\`
           {diff_output}
@@ -230,7 +272,7 @@ jobs:
           </details>
 
           <details>
-          <summary>🧪 Unit test output</summary>
+          <summary>Unit test output</summary>
 
           \`\`\`
           {test_output}
@@ -244,8 +286,9 @@ jobs:
               f.write(textwrap.dedent(body))
           PYEOF
         env:
-          PROJECT: ${{ matrix.project }}
-          STATUS: ${{ steps.tests.outputs.status }}
+          PROJECT:      ${{ matrix.project }}
+          STATUS:       ${{ steps.tests.outputs.status }}
+          BASELINE_REF: ${{ needs.detect.outputs.baseline_ref }}
 
       - name: Find existing PR comment for this project
         uses: peter-evans/find-comment@v3

@@ -1,6 +1,23 @@
 table Customers1
 	lineageTag: a62c3590-30e0-4b60-be09-c0d9cbe03489
 
+	measure AvgAnnualIncome = AVERAGE( Customers1[AnnualIncome] )
+		lineageTag: 64e0f95b-4bc2-4d78-8d00-3d02dae9ef60
+
+	measure TotalAnnualIncome = SUM( Customers1[AnnualIncome] )
+		lineageTag: 8987ba86-08dd-470e-a1f5-7e4d1717f62e
+
+	measure CustomerCount = DISTINCTCOUNT( Customers1[CustomerID] )
+		lineageTag: 17119270-4f92-4f8a-a7df-be4c1a78e23b
+
+	measure AvgAge = AVERAGE( Customers1[Age] )
+		lineageTag: e7245987-a7d5-4928-8f54-74fd669fdedb
+
+		changedProperty = IsHidden
+
+	measure TotalChildren_Sum = SUM( Customers1[TotalChildren] )
+		lineageTag: 63a879c1-abee-4153-a8f5-6257ed0cba82
+
 	column CustomerID
 		dataType: string
 		lineageTag: e8fc3188-608a-47db-ad4f-fb9381b9b2d5
@@ -134,14 +151,6 @@ table Customers1
 
 		annotation SummarizationSetBy = Automatic
 
-	measure AvgAnnualIncome = AVERAGE( Customers1[AnnualIncome] )
-	measure TotalAnnualIncome = SUM( Customers1[AnnualIncome] )
-	measure CustomerCount = DISTINCTCOUNT( Customers1[CustomerID] )
-	measure AvgAge = AVERAGE( Customers1[Age] )
-	measure TotalChildren_Sum = SUM( Customers1[TotalChildren] )
-
-	annotation PBI_ResultType = Table
-
 	partition Customers1 = m
 		mode: import
 		source =
@@ -152,4 +161,5 @@ table Customers1
 				in
 				    #"Changed Type"
 
+	annotation PBI_ResultType = Table
 

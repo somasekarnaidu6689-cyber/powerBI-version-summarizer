@@ -18,3 +18,8 @@ relationship 433f336c-aa6f-444a-b21c-4ee6d3cf4747
 	fromColumn: PowerBI-Datasets-main.'Date created'
 	toColumn: LocalDateTable_370c322f-a9fe-49ca-9c41-7f796dcf9369.Date
 
+relationship bfb3fc22-55a0-9ad0-864e-d561b57e45d4
+	crossFilteringBehavior: bothDirections
+	fromColumn: Customers1.FirstName
+	toColumn: PowerBI-Datasets-main.Name
+

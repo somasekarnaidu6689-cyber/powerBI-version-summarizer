@@ -19,12 +19,12 @@
             "height": 300,
             "width": 234
           },
-          "zIndex": 0
+          "zIndex": 1
         },
         {
           "location": {
-            "x": 284,
-            "y": 38
+            "x": 424,
+            "y": 142
           },
           "nodeIndex": "PowerBI-Datasets-main",
           "nodeLineageTag": "e1625fb4-df6b-4a0e-9e10-d3a9829d51de",
@@ -32,7 +32,7 @@
             "height": 224,
             "width": 234
           },
-          "zIndex": 0
+          "zIndex": 2
         }
       ],
       "name": "All tables",
