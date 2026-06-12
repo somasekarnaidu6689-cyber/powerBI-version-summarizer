@@ -4,7 +4,6 @@ from pathlib import Path
 import config
 
 
-# ─── Size Checker ─────────────────────────────────────────────
 def is_large_file(path: str | Path) -> bool:
     """
     Returns True if the file exceeds the threshold defined in config.
@@ -16,7 +15,6 @@ def is_large_file(path: str | Path) -> bool:
     return size_mb > config.LARGE_FILE_THRESHOLD_MB
 
 
-# ─── Databricks Small File Warning ────────────────────────────
 def warn_if_small(path: str | Path) -> None:
     """
     Warns the user if file is under 20 MB on Databricks.
