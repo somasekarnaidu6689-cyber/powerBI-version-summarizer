@@ -12,7 +12,6 @@ on:
   push:
     branches:
       - main
-      - main-v2
     paths:
       - 'pbix_diff/**'
       - 'Dockerfile'
