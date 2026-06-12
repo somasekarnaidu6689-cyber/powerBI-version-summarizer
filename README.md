@@ -129,7 +129,6 @@ Optional AI-related keys exist in `.env.example` but are not currently wired int
 Because AI summarization is disabled by default, normal runs do not transmit data to external services. If you enable it, store the API key securely and treat generated AI output as an assistive summary rather than an authoritative decision.
 
 ## How to run
-
 1. Open a terminal in the repository root:
 
 ```powershell
