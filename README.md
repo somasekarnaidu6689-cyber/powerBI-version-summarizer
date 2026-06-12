@@ -194,6 +194,32 @@ python -m pip install -r pbix_diff/requirements.txt
 
 - Recommended release practice: create a lightweight `Dockerfile` (if not present) and publish a versioned image; use the image tag as the required CI status check to ensure reproducibility across runs.
 
+### Docker build & tagging flow
+
+The `docker-publish.yml` workflow manages image builds and tags during pull requests and main branch pushes. Understanding the tag lifecycle helps developers reference the correct image version in their workflows.
+
+**Image name consistency:**
+- The base image name always remains exactly as defined in your workflow: `ghcr.io/${{ github.repository_owner }}/pbip-diff`
+- Only the tags change as you build and merge.
+
+**Tag behavior during PR:**
+- When you open or update a PR, the workflow builds a temporary image and tags it with `:temp` and `:pr-XYZ` (where `XYZ` is the PR number).
+- These tags exist in the registry and point to the pre-merge commit.
+
+**Tag updates on merge to main:**
+- When you merge a PR into `main`, the `push` event block of the workflow is triggered.
+- The `:latest` tag is moved from the old image to your brand-new merged image.
+- The `:main` branch tag is updated to point to the newest merged code.
+- The temporary PR tags (`:temp` and `:pr-XYZ`) remain frozen in the registry as historical snapshots of that specific PR.
+
+**Registry state after a merge:**
+- `pbip-diff:latest` → Points to the absolute newest merged code on `main`.
+- `pbip-diff:main` → Points to the absolute newest code on the `main` branch.
+- `pbip-diff:pr-XYZ` → Points to the code from PR #XYZ before it was merged (historical snapshot).
+
+**Supported workflows:**
+Only pull requests and pushes to `main` trigger the Docker build workflow. Direct pushes to feature branches do not build or publish images; use a PR to trigger the build process.
+
 ## GitHub PR Validation
 
 A PR validation workflow exists in `.github/workflows/pr-validation.yml`.
