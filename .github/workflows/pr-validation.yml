@@ -1,12 +1,15 @@
 name: PBIP PR Validation
 
-# ─── Triggers ─────────────────────────────────────────────────────────────────
-# Automatic: runs on every PR targeting any branch.
-# Manual:    workflow_dispatch lets you choose a baseline strategy and ref,
-#            useful for auditing a specific release tag or commit.
 on:
   pull_request:
     types: [opened, reopened, synchronize, edited]
+    paths:
+      - '**.pbip'
+      - '**.tmdl'
+      - '**.json'
+      - '**.bim'
+      - '**.pbix'
+      - '**.xml'
 
   workflow_dispatch:
     inputs:
@@ -32,7 +35,6 @@ on:
         required: false
         default: ''
 
-# ─── Jobs ─────────────────────────────────────────────────────────────────────
 jobs:
 
   # ── 1. Detect which PowerBI project folders changed ───────────────────────
@@ -41,8 +43,8 @@ jobs:
     permissions:
       contents: read
     outputs:
-      matrix:      ${{ steps.detect.outputs.matrix }}
-      any_changed: ${{ steps.detect.outputs.any_changed }}
+      matrix:       ${{ steps.detect.outputs.matrix }}
+      any_changed:  ${{ steps.detect.outputs.any_changed }}
       baseline_ref: ${{ steps.resolve.outputs.baseline_ref }}
 
     steps:
@@ -51,9 +53,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Resolve which git ref is the baseline depending on strategy.
-      # For PR runs this is always the base branch.
-      # For manual runs the caller can pass a tag, commit, or branch.
       - name: Resolve baseline ref
         id: resolve
         shell: bash
@@ -63,8 +62,6 @@ jobs:
 
           case "$strategy" in
             base_branch)
-              # For PRs, use the branch we are merging into.
-              # For manual runs without a PR context, fall back to main.
               ref="${{ github.base_ref || 'main' }}"
               ;;
             tag|commit|branch)
@@ -98,8 +95,6 @@ jobs:
           echo "Changed files:"
           echo "$changed"
 
-          # Discover every folder that contains a .pbip marker in the PR branch.
-          # The folder holding the .pbip file IS the project root — no hardcoding.
           matched_projects=""
           while IFS= read -r pbip_file; do
             project_dir=$(dirname "$pbip_file" | sed 's|^\./||')
@@ -143,25 +138,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Pull the Docker image once per job.
-      # Falls back to bare Python if the image isn't published yet.
       - name: Pull PBIP diff Docker image
-        id: pull
-        run: docker pull ghcr.io/${{ github.repository_owner }}/pbip-diff:latest
-        continue-on-error: true
+        run: docker pull ghcr.io/somasekarnaidu6689-cyber/pbip-diff:latest
 
-      - name: Install Python deps (fallback if Docker unavailable)
-        if: steps.pull.outcome == 'failure'
-        run: |
-          pip install -r pbix_diff/requirements.txt
-          echo "USE_DOCKER=false" >> $GITHUB_ENV
-
-      - name: Set docker flag
-        if: steps.pull.outcome == 'success'
-        run: echo "USE_DOCKER=true" >> $GITHUB_ENV
-
-      # Check out only the changed project folder from the baseline ref.
-      # This gives us the OLD version without touching the PR checkout.
       - name: Extract baseline version
         shell: bash
         run: |
@@ -219,20 +198,13 @@ jobs:
           echo "OLD .pbip    : $old_pbip"
           echo "NEW .pbip    : $new_pbip"
 
-          if [ "$USE_DOCKER" = "true" ]; then
-            docker run --rm \
-              -v "${{ github.workspace }}:/workspace" \
-              -v "/tmp/pbip_old:/tmp/pbip_old" \
-              ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
-              --old "$OLD_DIR" \
-              --new "/workspace/$PROJECT_DIR" \
-              2>&1 | tee results/diff-output.txt
-          else
-            python pbix_diff/run.py \
-              --old "$OLD_DIR" \
-              --new "$NEW_DIR" \
-              2>&1 | tee results/diff-output.txt
-          fi
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -v "/tmp/pbip_old:/tmp/pbip_old" \
+            ghcr.io/somasekarnaidu6689-cyber/pbip-diff:latest \
+            --old "$OLD_DIR" \
+            --new "/workspace/$PROJECT_DIR" \
+            2>&1 | tee results/diff-output.txt
 
       - name: Run unit tests
         id: tests
@@ -240,8 +212,6 @@ jobs:
         run: |
           mkdir -p results
 
-          # Dynamically find any SemanticModel that has a complete definition/ folder.
-          # Injected as TEST_SEMANTIC_MODEL so the test file never hardcodes a path.
           TEST_SM=$(find . -type d -name "*.SemanticModel" \
                       -not -path '*/.git/*' \
                       -not -path '*/tmp/*' \
@@ -250,20 +220,15 @@ jobs:
                       done)
           echo "Using SemanticModel for tests: $TEST_SM"
 
-          if [ "$USE_DOCKER" = "true" ]; then
-            docker run --rm \
-              -v "${{ github.workspace }}:/workspace" \
-              -w /workspace \
-              -e "TEST_SEMANTIC_MODEL=$TEST_SM" \
-              --entrypoint python \
-              ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
-              -m unittest discover -s pbix_diff -p 'test_*.py' \
-              2>&1 | tee results/test-output.txt
-          else
-            TEST_SEMANTIC_MODEL="$TEST_SM" \
-            python -m unittest discover -s pbix_diff -p 'test_*.py' \
-              2>&1 | tee results/test-output.txt
-          fi
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            -e "TEST_SEMANTIC_MODEL=$TEST_SM" \
+            --entrypoint python \
+            ghcr.io/${{ github.repository_owner }}/pbip-diff:latest \
+            -m unittest discover -s pbix_diff -p 'test_*.py' \
+            2>&1 | tee results/test-output.txt
+
           echo "status=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
@@ -285,20 +250,20 @@ jobs:
           except FileNotFoundError:
               diff_output = "Diff was not run."
 
-          result = "✅ All tests passed" if status == "0" else "❌ Some tests failed"
+          result = "All tests passed" if status == "0" else "Some tests failed"
 
-          body = f"""### PBIP Validation — \`{project}\`
+          body = f"""### PBIP Validation : \`{project}\`
 
           **Status:** {result}
           **Baseline:** \`{baseline_ref}\`
 
-          > ℹ️ This diff covers semantic model (tables, columns, measures, relationships, roles),
+          > ! This diff covers semantic model (tables, columns, measures, relationships, roles),
           > report (pages, visuals, filters, slicers) and layout (canvas, bookmarks, z-order).
           > Items **not** compared: refresh schedules, gateways, custom visuals, service-side
           > themes, dataflow dependencies, RLS membership, subscriptions. See PBIP_GOVERNANCE.md.
 
           <details>
-          <summary>📊 PBIP diff report</summary>
+          <summary>PBIP diff report</summary>
 
           \`\`\`
           {diff_output}
@@ -307,7 +272,7 @@ jobs:
           </details>
 
           <details>
-          <summary>🧪 Unit test output</summary>
+          <summary>Unit test output</summary>
 
           \`\`\`
           {test_output}
