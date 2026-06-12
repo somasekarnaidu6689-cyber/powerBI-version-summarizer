@@ -184,6 +184,15 @@ python -m pip install -r pbix_diff/requirements.txt
 
 - Docker image: a `docker-publish.yml` workflow is included to build and publish an image to GHCR for fully reproducible CI runs. Use the published image in your workflow (the PR validation workflow already attempts to pull `ghcr.io/${{ github.repository_owner }}/pbip-diff:latest` and falls back to installing dependencies when Docker is unavailable).
 
+- We intentionally do not include a Python fallback for local repository code because it introduces unnecessary coupling and drift. If every consuming repository depends on this repository structure, renaming `pbix_diff/` to `src/pbix_diff/` would break workflows everywhere.
+
+  - Coupling: every consuming repo depends on this repo structure.
+  - Rename risk: moving `pbix_diff/` to `src/pbix_diff/` would break all consumers.
+  - Version drift: today a repo runs one version; tomorrow a change to `main` could silently change behavior without consumers updating their workflow.
+  - Reliability: fallback is meant to help when Docker has issues, but if GHCR and GitHub cloning are both unavailable, both paths fail.
+  - Authoritative path: it is better to keep one execution path.
+  - Performance: cloning an entire repo to access a Python folder is slower than pulling a small cached container layer.
+
 - Recommended release practice: create a lightweight `Dockerfile` (if not present) and publish a versioned image; use the image tag as the required CI status check to ensure reproducibility across runs.
 
 ## GitHub PR Validation
