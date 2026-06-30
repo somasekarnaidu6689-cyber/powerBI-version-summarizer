@@ -1,16 +1,16 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.9.0/schema.json",
-  "name": "2_pie_education_income",
+  "name": "6_stacked_marital_income",
   "position": {
-    "x": 420,
-    "y": 20,
+    "x": 820,
+    "y": 300,
     "z": 1,
     "height": 260,
     "width": 380,
-    "tabOrder": 2
+    "tabOrder": 6
   },
   "visual": {
-    "visualType": "donutChart",
+    "visualType": "stackedColumnChart",
     "query": {
       "queryState": {
         "Category": {
@@ -23,15 +23,15 @@
                       "Entity": "Customers1"
                     }
                   },
-                  "Property": "EducationLevel"
+                  "Property": "MaritalStatus"
                 }
               },
-              "queryRef": "Customers1.EducationLevel",
+              "queryRef": "Customers1.MaritalStatus",
               "active": true
             }
           ]
         },
-        "Values": {
+        "Y": {
           "projections": [
             {
               "field": {
